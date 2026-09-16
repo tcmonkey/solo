@@ -1,17 +1,17 @@
-# Codex adapter
+# Codex 宿主使用说明
 
-Install:
+安装：
 
 ```bash
 python3 /Users/monkey/Documents/kit/workspace/solo/installers/install.py --platform codex
 ```
 
-Invoke in a target project:
+在目标项目中调用：
 
 ```text
 $solo
 ```
 
-With no arguments, a new project starts in auto-selected delivery mode plus `guided`; a project with `.ai-delivery/state.json` continues from saved state. Add the requirement or target phase in the same message when known.
+不附加参数时，新项目自动选择流程规模，使用 `guided` 模式；已有 `.ai-delivery/state.json` 的项目根据保存状态继续。已知需求或目标阶段可以追加在同一条消息中。
 
-Codex can also open `/skills` and select Solo. Codex UI metadata lives in `solo/solo/agents/openai.yaml`. All workflow content resolves to the shared `core/` directory; generated Markdown uses Chinese filenames under `AI/output/`.
+也可打开 `/skills` 选择 solo。Codex 展示元数据位于工具包的 `solo/agents/openai.yaml`；全部流程内容链接至共享 `core/`，生成 Markdown 使用中文文件名，存于 `AI/output/`。

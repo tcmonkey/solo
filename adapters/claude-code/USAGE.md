@@ -1,17 +1,17 @@
-# Claude Code adapter
+# Claude Code 宿主使用说明
 
-Install after Claude Code is available:
+具备 Claude Code 后安装：
 
 ```bash
 python3 /Users/monkey/Documents/kit/workspace/solo/installers/install.py --platform claude-code
 ```
 
-Start Claude Code in the target repository and invoke:
+在目标仓库启动 Claude Code 并调用：
 
 ```text
 /solo
 ```
 
-With no arguments, a new project starts in auto-selected delivery mode plus `guided`; a project with `.ai-delivery/state.json` continues from saved state. Add the requirement or target phase in the same message when known.
+不附加参数时，新项目自动选择流程规模，使用 `guided` 模式；已有 `.ai-delivery/state.json` 的项目根据保存状态继续。已知需求或目标阶段可以追加在同一条消息中。
 
-The shared skill follows Claude Code's active project instructions, persists machine state under `.ai-delivery/`, and writes Chinese-named Markdown documents under `AI/output/`.
+共享技能遵循 Claude Code 当前项目指令，将机器状态持久保存于 `.ai-delivery/`，将中文名 Markdown 文档写入 `AI/output/`。

@@ -1,82 +1,82 @@
 ---
 name: solo
-description: "Guide one developer through a persistent, stage-gated delivery workflow from mixed inputs to requirements, product and technical designs, development with developer self-testing, code review, independent testing, release, and retrospective. 用于从零开始、继续或修改端到端软件项目交付；孤立的编码问答不自动使用。"
+description: "引导一名开发者基于文本、图片、文件和在线资料，按阶段完成需求梳理、产品与技术方案、开发和开发自测、代码审查、独立测试、发布与复盘，并持久记录进度。用于从零开始、继续或修改端到端软件项目交付；孤立的编码问答不自动使用。"
 ---
 
-# Solo
+# solo 一人全栈交付
 
-Turn a project idea and its supporting materials into a traceable, reviewable implementation. Preserve the user's business decisions and existing repository conventions. Keep progress in the target project so the workflow can resume across sessions, agent runtimes, and model providers.
+将项目想法及其材料转化为可追踪、可评审的实现。尊重用户的业务决策和已有仓库约定，将进度保存在目标项目中，使不同会话、宿主平台和模型能够接续工作。
 
-## Default invocation
+## 默认调用
 
-When the user invokes this skill without additional instructions:
+用户仅调用技能、没有附加指令时：
 
-- if the target project contains `.ai-delivery/state.json`, continue from its next unfinished or requested phase;
-- otherwise initialize a new delivery using an automatically selected Lite, Standard, or Full mode and `guided` interaction;
-- if the target project or requirement input is missing, ask one concise consolidated question for it;
-- start with intake and requirements understanding, then stop at the scope gate before product design or implementation.
+- 目标项目已有 `.ai-delivery/state.json`：从下一个未完成阶段或用户指定阶段继续；
+- 尚未初始化：自动选择 Lite、Standard 或 Full 流程规模，以 `guided` 交互模式开始；
+- 缺少目标项目或需求输入：合并必要问题，简洁询问；
+- 从材料接收和需求理解开始，在范围确认关口暂停，不直接进入产品设计或编码。
 
-## Locate or initialize the delivery workspace
+## 定位或初始化交付工作区
 
-1. Resolve the target project root from the user's path or current working directory. Never treat this skill's own directory as the target project unless explicitly requested.
-2. Read [references/运行环境规范.md](references/运行环境规范.md), identify the host and model when known, and detect the capabilities needed for the current phase before relying on them.
-3. Read the active host's project instructions and precedence rules, repository documentation, build configuration, and existing `.ai-delivery/state.json` before acting.
-4. If `.ai-delivery/state.json` exists with a template version older than `0.7.0`, migrate it when Python execution is available:
+1. 根据用户提供的路径或当前工作目录确定目标项目根目录。除非用户明确指定，不得把技能目录当作业务项目目录。
+2. 阅读 [运行环境规范](references/运行环境规范.md)，在已知时识别宿主和模型；使用能力前确认当前阶段需要的工具能力。
+3. 操作前阅读当前宿主的项目指令及优先级规则、仓库文档、构建配置和已有的 `.ai-delivery/state.json`。
+4. 状态文件存在且模板版本低于 `0.7.0` 时，有 Python 执行能力则迁移：
 
    ```bash
    python3 <skill-dir>/scripts/migrate_project.py --project <project-root>
    ```
 
-   Without Python, preserve an export or backup of the existing state, apply the `0.7.0` fields from `assets/state.json` and `assets/project-profile.yaml`, move human-readable artifacts to `AI/output` with the numbered Chinese filenames defined in `assets/`, move the input manifest to `AI/input/00 输入材料清单.md`, increment the revision once, and append a migration entry to `AI/output/18 交接记录.md` before continuing. When migrating versions before `0.4.0`, also replace `implementation` with `development`, split `verification` into `code_review` and `testing`, and treat completed combined verification as `stale` until separated evidence is reviewed.
+   没有 Python 时，先保留旧状态的导出或备份，依据 `assets/state.json` 和 `assets/project-profile.yaml` 应用 `0.7.0` 字段；按 `assets/` 定义的编号中文名将人类可读文档移至 `AI/output`，将输入清单移至 `AI/input/00 输入材料清单.md`。修订号递增一次，并追加 `AI/output/18 交接记录.md` 后再继续。迁移低于 `0.4.0` 的版本时，还须把 `implementation` 改为 `development`，将 `verification` 拆成 `code_review` 和 `testing`；已完成的合并验证标为 `stale`，直到分离后的证据重新评审。
 
-5. If `.ai-delivery/` is absent, read [references/交付流程规范.md](references/交付流程规范.md), select Lite, Standard, or Full, and initialize it. When Python execution is available, run:
+5. 项目没有 `.ai-delivery/` 时，阅读 [交付流程规范](references/交付流程规范.md)，选择 Lite、Standard 或 Full 并初始化。有 Python 时执行：
 
    ```bash
    python3 <skill-dir>/scripts/init_project.py --project <project-root> --mode <lite|standard|full> --interaction <guided|continuous>
    ```
 
-   Pass `--platform`, `--model`, and known `--capability key=value` arguments. If Python is unavailable but the host has a writable filesystem, create the same structure from `assets/` and record that scripted initialization was unavailable. If persistent files are unavailable, produce exportable artifacts and state rather than claiming they were saved.
-6. Ingest the user's text, images, local files, URLs, and available connected documents. Store or link user-provided materials under `AI/input/` and record each source in `AI/input/00 输入材料清单.md`; link large files rather than copying them unless the user wants a local snapshot. Store generated human-readable Markdown under `AI/output/` using the numbered filenames defined in `assets/`. Keep `.ai-delivery/` for machine state and configuration only.
-7. Separate supplied facts, repo-observed facts, assumptions, conflicts, and unanswered questions. Never silently convert an assumption into a requirement.
-8. Before any stateful change, reload `.ai-delivery/state.json`, note its `revision`, and read the latest entry in `AI/output/18 交接记录.md`.
+   传入 `--platform`、`--model` 和已知的 `--capability key=value`。无 Python 但文件可写时，依据 `assets/` 创建同样的结构，说明脚本初始化不可用；无法持久存储时，提供可导出的文档和状态，不声称已保存。
+6. 接收用户的文字、图片、本地文件、链接和可访问的连接文档。材料保存或链接至 `AI/input/`，在 `AI/input/00 输入材料清单.md` 登记来源。大文件优先记录链接，除非用户要求本地快照。生成的人类可读 Markdown 存至 `AI/output/`，采用 `assets/` 中的编号中文名；`.ai-delivery/` 只存机器状态和配置。
+7. 区分用户提供的事实、仓库观察事实、假设、冲突和待回答问题，不把假设悄悄变成需求。
+8. 每次状态性变更前重新读取 `.ai-delivery/state.json`，记下 `revision`，阅读 `AI/output/18 交接记录.md` 的最新记录。
 
-## Operate by intent
+## 按用户意图执行
 
-- **Start / 初始化**: initialize state, assess complexity, inspect inputs, and produce an intake summary.
-- **Continue / 继续**: load state and proceed from the next unfinished or requested phase.
-- **Status / 状态**: report current phase, approvals, missing inputs, risks, and next action without changing artifacts.
-- **Revise / 修改**: update the named artifact, mark affected downstream artifacts stale, and show impact.
-- **Skip / 跳过**: skip an optional phase only; record the reason in `AI/output/15 决策记录.md`.
-- **Validate / 检查**: run the validator and relevant repository checks, then report evidence.
-- **Handoff / 交接**: summarize completed work, changed artifacts, unresolved risks, and the exact next action for another agent runtime.
+- **初始化**：初始化状态、判断复杂度、检查输入并展示材料理解摘要。
+- **继续**：读取状态，从下一个未完成阶段或指定阶段继续。
+- **状态**：只报告阶段、审批、缺失输入、风险和下一步，不修改文档。
+- **修改**：修订指定文档，将受影响的下游文档标为待重新验证，并展示影响。
+- **跳过**：只跳过可选阶段，在 `AI/output/15 决策记录.md` 记录原因。
+- **检查**：运行交付校验及相关仓库检查，报告证据。
+- **交接**：概括已完成工作、变更文档、未解决风险，以及下一个宿主应执行的具体动作。
 
-If the user's instruction names a phase or endpoint, honor it. Otherwise use the configured interaction mode.
+用户指定了阶段或终点时，以其指令为准；否则遵循项目配置的交互模式。
 
-## Execute phases
+## 分阶段执行
 
-Use only the reference for the current phase plus `交付流程规范.md`:
+只读取当前阶段规范及 `交付流程规范.md`，不要每次加载全部参考文档：
 
-1. Intake and requirements: read [references/需求阶段规范.md](references/需求阶段规范.md).
-2. Product solution: read [references/产品阶段规范.md](references/产品阶段规范.md).
-3. UI/UX when enabled: read [references/界面设计阶段规范.md](references/界面设计阶段规范.md).
-4. Technical design and plan: read [references/技术方案阶段规范.md](references/技术方案阶段规范.md).
-5. Development and developer self-testing: read [references/开发阶段规范.md](references/开发阶段规范.md).
-6. Code review: read [references/代码审查阶段规范.md](references/代码审查阶段规范.md).
-7. Independent testing: read [references/测试阶段规范.md](references/测试阶段规范.md).
-8. Release and learning: read [references/发布与复盘阶段规范.md](references/发布与复盘阶段规范.md).
+1. 材料接收与需求：阅读 [需求阶段规范](references/需求阶段规范.md)。
+2. 产品方案：阅读 [产品阶段规范](references/产品阶段规范.md)。
+3. 启用界面设计时：阅读 [界面设计阶段规范](references/界面设计阶段规范.md)。
+4. 技术方案与开发计划：阅读 [技术方案阶段规范](references/技术方案阶段规范.md)。
+5. 开发与开发自测：阅读 [开发阶段规范](references/开发阶段规范.md)。
+6. 代码审查：阅读 [代码审查阶段规范](references/代码审查阶段规范.md)。
+7. 独立测试：阅读 [测试阶段规范](references/测试阶段规范.md)。
+8. 发布与复盘：阅读 [发布与复盘阶段规范](references/发布与复盘阶段规范.md)。
 
-At every phase:
+各阶段共同要求：
 
-- For projects adopting the Java DDD reference template, the consolidated [Java DDD开发规范](references/Java%20DDD开发规范.md) is the current rule source. Technical/development references route installation of the project's own Checkstyle/Maven gate before coding; do not infer new rules from superseded historical project decisions or apply the template to unrelated stacks.
-- The Java DDD implementation examples are bundled in `assets/java-ddd/reference-project/`; technical planning and development references route task-specific reading. Use them as examples, not another rulebook, a production-ready scaffold or an absolute-path dependency on the original ddd project.
-- cite input sources using stable labels such as `SRC-001`;
-- assign stable IDs to requirements, decisions, tasks, interfaces, and tests;
-- update `AI/output/14 交付追踪矩阵.md` rather than relying on prose memory;
-- label unknown information `TBD` and place it in `AI/output/17 开放问题.md`;
-- preserve existing user edits and avoid overwriting an approved artifact without noting the revision;
-- validate the phase with `scripts/validate_delivery.py` when Python is available; otherwise perform the equivalent structural review and label scripted validation `not_run`.
+- 采用 Java DDD 参考模板时，以统一的 [Java DDD开发规范](references/Java%20DDD开发规范.md) 为当前规则源。技术与开发阶段规范负责引导编码前安装项目自己的 Checkstyle/Maven 门禁；不从已被覆盖的历史决策推导新规则，不将此模板强加给无关技术栈。
+- Java DDD 示例随包存于 `assets/java-ddd/reference-project/`，开发计划与开发阶段按任务读取。它是实现参考，不是另一套规则、生产就绪脚手架或对原 ddd 工程绝对路径的依赖。
+- 用 `SRC-001` 等稳定编号引用输入来源；
+- 为需求、决策、任务、接口和测试分配稳定编号；
+- 更新 `AI/output/14 交付追踪矩阵.md`，不只依靠聊天记忆；
+- 未知信息标为 `TBD`，登记在 `AI/output/17 开放问题.md`；
+- 保留用户已有改动，修订已批准文档时明确记录版本；
+- 有 Python 时执行 `scripts/validate_delivery.py` 校验阶段；否则做等价结构检查，将脚本校验标为 `not_run`。
 
-After a state-changing turn, record the handoff with revision protection when Python is available:
+发生状态变更的回合结束时，有 Python 则记录带修订号保护的交接：
 
 ```bash
 python3 <skill-dir>/scripts/record_handoff.py \
@@ -85,34 +85,34 @@ python3 <skill-dir>/scripts/record_handoff.py \
   --expected-revision <revision-read-before-work>
 ```
 
-If the expected revision no longer matches, another runtime changed the workflow. Reload the state and artifacts, reconcile the difference, and rerun the handoff command. Do not overwrite the newer state.
+预期修订号不匹配时，说明其他运行环境已更新流程。重新读取状态和文档、协调差异后再记录，不覆盖较新的状态。
 
-If the host cannot execute the handoff script, update `.ai-delivery/state.json` and `AI/output/18 交接记录.md` together, increment the revision exactly once, and disclose that process locking was unavailable.
+宿主无法执行交接脚本时，同时更新 `.ai-delivery/state.json` 与 `AI/output/18 交接记录.md`，修订号只递增一次，并说明未使用进程锁。
 
-## Gates and autonomy
+## 确认关口与自主执行边界
 
-In `guided` interaction mode, pause for user confirmation at scope, product, technical, development-ready, test-acceptance, and release gates. Present a concrete artifact and a short decision summary before asking. Consolidate questions that materially affect the result; do not ask the user to approve formatting or routine checks.
+`guided` 模式下，在需求范围、产品、技术、开发就绪、测试验收和发布关口等待用户确认。先展示具体文档及简短决策摘要，再询问；合并真正影响结果的问题，不要求用户反复批准格式或常规检查。
 
-In `continuous` mode, proceed through authorized phases, using explicit assumptions for non-critical gaps. Still stop when a missing business decision would materially change scope, data, security, money movement, external communication, deployment, or destructive changes.
+`continuous` 模式下，在已授权阶段内持续执行；非关键缺口可以采用明确标注的假设。若缺少的业务决策会实质改变范围、数据、安全、资金流、外部沟通、部署或破坏性操作，仍须暂停。
 
-Approval of a technical design or an explicit request to implement authorizes repository edits and proportionate developer self-testing within that design. It does not authorize deployment, publishing, merging, production data changes, or external messages.
+技术方案获批或用户明确要求实施，授权的是该方案范围内的仓库修改和适度开发自测，不代表授权部署、发布、合并、生产数据修改或外部消息。
 
-When an upstream artifact changes, mark dependent phases `stale` in `state.json`, list affected IDs, and revalidate them before development or release.
+上游文档变化时，在 `state.json` 将受影响的下游阶段标为 `stale`，列出受影响编号，在开发或发布前重新验证。
 
-Do not let two agent runtimes edit the same project concurrently. Sequential handoffs may use different models or platforms because `.ai-delivery/` is the source of truth.
+不同宿主不能同时编辑同一项目。顺序交接可以更换平台或模型，项目 `.ai-delivery/` 始终是流程事实源。
 
-## Finish each response with a checkpoint
+## 回复结束时提供检查点
 
-State:
+说明：
 
-- current phase and status;
-- artifacts created or changed;
-- important assumptions and unresolved questions;
-- validation evidence;
-- the exact next decision or action.
+- 当前阶段和状态；
+- 新增或修改的文档；
+- 重要假设和开放问题；
+- 校验证据；
+- 下一项具体决定或动作。
 
-Do not claim completion when required checks did not run. Distinguish failures, unavailable checks, and checks that passed.
+必要检查没有执行时不声称完成；明确区分失败、不可用和通过。
 
-## Improve the templates safely
+## 安全迭代模板
 
-During retrospective, write proposed improvements to the target project's `AI/output/13 项目复盘.md`. Do not modify this skill automatically. Template changes require an explicit user request and should be supported by a concrete project failure, revision pattern, or measured improvement.
+复盘时，将改进建议写到目标项目的 `AI/output/13 项目复盘.md`，不自动修改公共技能。只有用户明确要求，且有具体项目失败、修订规律或可衡量改进作为依据时，才更新模板。
