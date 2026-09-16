@@ -10,6 +10,8 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
+from delivery_model import TEMPLATE_VERSION, WORKBENCH
+
 
 CAPABILITY_KEYS = {"filesystem", "shell", "python", "repository", "browser", "persistence"}
 
@@ -90,15 +92,19 @@ def main() -> int:
     capabilities = parse_capabilities(args.capability)
     delivery = Path(args.project).expanduser().resolve() / ".ai-delivery"
     state_path = delivery / "state.json"
-    handoff_path = delivery.parent / "AI/output/18 交接记录.md"
+    handoff_path = delivery.parent / "AI/output" / WORKBENCH
     lock_path = delivery / ".handoff.lock"
     transaction_path = delivery / ".handoff-transaction.json"
+    if (delivery / ".migration-transaction.json").exists():
+        raise SystemExit("Recover the pending migration before recording a handoff")
     if not state_path.is_file() or not handoff_path.is_file():
-        raise SystemExit("state.json or AI/output/18 交接记录.md is missing; initialize or migrate the project first")
+        raise SystemExit("state.json or AI/output/00 交付工作台.md is missing; initialize or migrate first")
 
     with exclusive_lock(lock_path):
         recover_transaction(transaction_path, state_path, handoff_path)
         state = json.loads(state_path.read_text(encoding="utf-8"))
+        if state.get("template_version") != TEMPLATE_VERSION:
+            raise SystemExit("Migrate the project before recording a handoff")
         current_revision = state.get("revision")
         if current_revision != args.expected_revision:
             raise SystemExit(
@@ -116,9 +122,16 @@ def main() -> int:
             f"{table_cell(args.summary)} | {table_cell(args.next_action)} |\n"
         )
         handoff_content = handoff_path.read_text(encoding="utf-8")
+        if "## 7. 交接记录" not in handoff_content:
+            raise SystemExit("交付工作台缺少第 7 节交接记录")
+        prefix, section = handoff_content.split("## 7. 交接记录", 1)
+        import re
+        following = re.search(r"\n## ", section)
+        tail = section[following.start():] if following else ""
+        section = section[:following.start()] if following else section
+        handoff_content = prefix + "## 7. 交接记录" + section.rstrip() + "\n" + row + tail
         if not handoff_content.endswith("\n"):
             handoff_content += "\n"
-        handoff_content += row
 
         state["revision"] = next_revision
         state["current_phase"] = args.phase

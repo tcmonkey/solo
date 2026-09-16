@@ -1,6 +1,8 @@
 {
-  "schema_version": "1.4",
-  "template_version": "0.7.0",
+  "schema_version": "1.5",
+  "template_version": "0.8.0",
+  "artifact_layout": "consolidated-lazy",
+  "artifact_overrides": {},
   "project_name": "{{PROJECT_NAME}}",
   "delivery_mode": "{{DELIVERY_MODE}}",
   "interaction_mode": "{{INTERACTION_MODE}}",
@@ -27,8 +29,8 @@
     "updated_at": "{{CREATED_AT}}"
   },
   "handoff": {
-    "summary": "Workflow initialized",
-    "next_action": "Ingest sources and complete intake"
+    "summary": "交付流程已初始化，仅创建工作台与输入清单",
+    "next_action": "接收材料并确认需求理解"
   },
   "last_updated": "{{CREATED_AT}}"
 }

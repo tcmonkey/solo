@@ -31,7 +31,7 @@
 
 ## 跨宿主继续
 
-如果项目已有 `.ai-delivery/`，必须先读取 `.ai-delivery/state.json`、`AI/output/18 交接记录.md`、相关产物和当前平台的项目指令文件。以其中最新 `revision` 为准，不得根据聊天记忆重建审批或测试结果。
+如果项目已有 `.ai-delivery/`，必须先读取 `.ai-delivery/state.json`、`AI/output/00 交付工作台.md`、相关产物和当前平台的项目指令文件。以其中最新 `revision` 为准，不得根据聊天记忆重建审批或测试结果。
 
 ## 执行要求
 

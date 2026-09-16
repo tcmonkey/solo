@@ -1,110 +1,53 @@
 #!/usr/bin/env python3
-"""Migrate a Solo project to the 0.7 numbered Chinese document layout safely."""
+"""将 0.1～0.7 项目迁移到合并、按需的 0.8 文档布局；原文逐份归档。"""
 
 from __future__ import annotations
 
 import argparse
+import copy
+import hashlib
 import json
-import os
 import re
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
+from delivery_model import CAPABILITY_KEYS, ENABLED, PHASE_FILES, PHASES, RELEASE_PHASES, SCHEMA_VERSION, TEMPLATE_VERSION, WORKBENCH, body, ensure_project, metadata, render
+from record_handoff import atomic_write, exclusive_lock
 
-TARGET_VERSION = "0.7.0"
-TARGET_SCHEMA = "1.4"
-CAPABILITY_KEYS = ("filesystem", "shell", "python", "repository", "browser", "persistence")
-PHASES = [
-    "intake", "requirements", "product", "ui", "technical", "planning",
-    "development", "code_review", "testing", "release", "retrospective",
-]
-ENABLED = {
-    "lite": {"intake", "requirements", "technical", "planning", "development", "code_review", "testing"},
-    "standard": {
-        "intake", "requirements", "product", "technical", "planning",
-        "development", "code_review", "testing", "release",
-    },
-    "full": set(PHASES),
+OLD_NAMES = {
+    "01 需求文档.md": ["需求文档.md", "requirements.md"],
+    "02 产品方案.md": ["产品方案.md", "product-spec.md"],
+    "03 界面设计方案.md": ["界面设计方案.md", "ui-spec.md"],
+    "04 技术方案.md": ["技术方案.md", "technical-design.md"],
+    "05 开发计划.md": ["开发计划.md", "implementation-plan.md"],
+    "06 开发自测报告.md": ["开发自测报告.md", "development-report.md"],
+    "07 代码审查报告.md": ["代码审查报告.md", "code-review-report.md", "review-report.md", "07 旧版代码审查记录.md"],
+    "08 测试用例.md": ["测试用例.md", "test-cases.md"],
+    "09 测试报告.md": ["测试报告.md", "test-report.md"],
+    "10 缺陷记录.md": ["缺陷记录.md", "defect-log.md"],
+    "11 性能测试报告.md": ["性能测试报告.md", "performance-report.md"],
+    "12 发布检查单.md": ["发布检查单.md", "release-checklist.md"],
+    "13 项目复盘.md": ["项目复盘.md", "retrospective.md"],
+    "14 交付追踪矩阵.md": ["交付追踪矩阵.md", "traceability.md"],
+    "15 决策记录.md": ["决策记录.md", "decisions.md"],
+    "16 假设记录.md": ["假设记录.md", "assumptions.md"],
+    "17 开放问题.md": ["开放问题.md", "open-questions.md"],
+    "18 交接记录.md": ["交接记录.md", "handoff.md"],
 }
-
-OUTPUT_RENAMES = {
-    "requirements.md": "01 需求文档.md",
-    "product-spec.md": "02 产品方案.md",
-    "ui-spec.md": "03 界面设计方案.md",
-    "technical-design.md": "04 技术方案.md",
-    "implementation-plan.md": "05 开发计划.md",
-    "development-report.md": "06 开发自测报告.md",
-    "code-review-report.md": "07 代码审查报告.md",
-    "review-report.md": "07 旧版代码审查记录.md",
-    "test-cases.md": "08 测试用例.md",
-    "test-report.md": "09 测试报告.md",
-    "defect-log.md": "10 缺陷记录.md",
-    "performance-report.md": "11 性能测试报告.md",
-    "release-checklist.md": "12 发布检查单.md",
-    "retrospective.md": "13 项目复盘.md",
-}
-ROOT_RENAMES = {
-    "traceability.md": "14 交付追踪矩阵.md",
-    "decisions.md": "15 决策记录.md",
-    "assumptions.md": "16 假设记录.md",
-    "open-questions.md": "17 开放问题.md",
-    "handoff.md": "18 交接记录.md",
-}
-CURRENT_OUTPUT_RENAMES = {
-    "需求文档.md": "01 需求文档.md",
-    "产品方案.md": "02 产品方案.md",
-    "界面设计方案.md": "03 界面设计方案.md",
-    "技术方案.md": "04 技术方案.md",
-    "开发计划.md": "05 开发计划.md",
-    "开发自测报告.md": "06 开发自测报告.md",
-    "代码审查报告.md": "07 代码审查报告.md",
-    "测试用例.md": "08 测试用例.md",
-    "测试报告.md": "09 测试报告.md",
-    "缺陷记录.md": "10 缺陷记录.md",
-    "性能测试报告.md": "11 性能测试报告.md",
-    "发布检查单.md": "12 发布检查单.md",
-    "项目复盘.md": "13 项目复盘.md",
-}
-CURRENT_ROOT_RENAMES = {
-    "交付追踪矩阵.md": "14 交付追踪矩阵.md",
-    "决策记录.md": "15 决策记录.md",
-    "假设记录.md": "16 假设记录.md",
-    "开放问题.md": "17 开放问题.md",
-    "交接记录.md": "18 交接记录.md",
-}
-REQUIRED_OUTPUT = [
-    "01 需求文档.md", "04 技术方案.md", "05 开发计划.md", "06 开发自测报告.md",
-    "07 代码审查报告.md", "08 测试用例.md", "09 测试报告.md", "10 缺陷记录.md",
-    "14 交付追踪矩阵.md", "15 决策记录.md", "16 假设记录.md", "17 开放问题.md", "18 交接记录.md",
-]
-MODE_OUTPUT = {
-    "lite": [],
-    "standard": ["02 产品方案.md", "12 发布检查单.md"],
-    "full": ["02 产品方案.md", "03 界面设计方案.md", "11 性能测试报告.md", "12 发布检查单.md", "13 项目复盘.md"],
+GROUPS = {
+    WORKBENCH: [("3. 需求追踪", "14 交付追踪矩阵.md"), ("4. 关键决策与审批", "15 决策记录.md"),
+                ("5. 假设、开放问题与风险", "16 假设记录.md"), ("5. 假设、开放问题与风险补充", "17 开放问题.md")],
+    "04 技术方案.md": [("整体方案（原文）", "04 技术方案.md"), ("开发计划", "05 开发计划.md")],
+    "05 开发交付记录.md": [("实际变更与开发自测", "06 开发自测报告.md"), ("代码审查", "07 代码审查报告.md")],
+    "06 测试验收报告.md": [("测试用例", "08 测试用例.md"), ("测试执行", "09 测试报告.md"),
+                          ("缺陷与回归", "10 缺陷记录.md"), ("性能、兼容与回滚", "11 性能测试报告.md")],
+    "07 发布运行记录.md": [("发布准备（旧记录）", "12 发布检查单.md")],
+    "08 效果评估与复盘.md": [("效果评估与复盘（旧记录）", "13 项目复盘.md")],
 }
 
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--project", required=True, help="Target project root")
-    return parser.parse_args()
-
-
-def atomic_write(path: Path, content: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(path.name + ".tmp")
-    temporary.write_text(content, encoding="utf-8")
-    os.replace(temporary, path)
-
-
-def render(text: str, values: dict[str, str]) -> str:
-    for key, value in values.items():
-        text = text.replace("{{" + key + "}}", value)
-    return text
-
-
-def phase_record(value: object, required: bool) -> dict[str, object]:
+def phase_record(value: object, required: bool) -> dict:
     record = dict(value) if isinstance(value, dict) else {}
     record.setdefault("status", "not_started" if required else "skipped")
     record.setdefault("required", required)
@@ -112,269 +55,208 @@ def phase_record(value: object, required: bool) -> dict[str, object]:
     return record
 
 
-def split_verification_status(status: str, required: bool) -> str:
-    if not required:
-        return "skipped"
-    if status == "not_started":
-        return "not_started"
-    if status == "blocked":
-        return "blocked"
-    return "stale"
-
-
-def unique_existing(candidates: list[Path]) -> list[Path]:
-    found: list[Path] = []
-    resolved: set[Path] = set()
-    for candidate in candidates:
-        if candidate.is_file():
-            real = candidate.resolve()
-            if real not in resolved:
-                resolved.add(real)
-                found.append(candidate)
-    return found
-
-
-def move_document(candidates: list[Path], destination: Path, backup_documents: Path) -> None:
-    sources = unique_existing(candidates)
-    if destination.is_file():
-        destination_bytes = destination.read_bytes()
-        for source in sources:
-            if source.resolve() == destination.resolve():
-                continue
-            if source.read_bytes() != destination_bytes:
-                raise SystemExit(f"Document naming conflict: {source} and {destination}")
-            backup = backup_documents / source.name
-            backup.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(source, backup)
-            source.unlink()
-        return
-    if not sources:
-        return
-    primary = sources[0]
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    backup_documents.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(primary, backup_documents / primary.name)
-    os.replace(primary, destination)
-    for duplicate in sources[1:]:
-        if duplicate.read_bytes() != destination.read_bytes():
-            raise SystemExit(f"Document naming conflict: {duplicate} and {destination}")
-        shutil.copy2(duplicate, backup_documents / duplicate.name)
-        duplicate.unlink()
+def recover(project: Path, journal: Path) -> None:
+    project = project.resolve()
+    transaction = json.loads(journal.read_text(encoding="utf-8"))
+    state = json.loads((project / ".ai-delivery/state.json").read_text(encoding="utf-8"))
+    if state.get("revision") not in {transaction["base_revision"], transaction["next_revision"]}:
+        raise SystemExit("迁移恢复遇到较新状态，先协调 revision，不覆盖")
+    # 只允许迁移写入 AI 文档或交付机器文件，不能越界覆盖代码。
+    for relative, content in transaction["writes"].items():
+        path = (project / relative).resolve()
+        if not (path.is_relative_to(project / "AI") or path.is_relative_to(project / ".ai-delivery")):
+            raise SystemExit(f"Unsafe migration destination: {relative}")
+        if path.suffix not in {".md", ".json", ".yaml"}:
+            raise SystemExit(f"Unsafe migration suffix: {relative}")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        atomic_write(path, content)
+    for relative, expected_sha in transaction["remove"].items():
+        path = (project / relative).resolve()
+        if not path.is_relative_to(project) or path.suffix != ".md" or relative in transaction["writes"]:
+            raise SystemExit(f"Unsafe migration cleanup: {relative}")
+        if path.is_file():
+            if hashlib.sha256(path.read_bytes()).hexdigest() != expected_sha:
+                raise SystemExit(f"迁移过程中原文被修改，保留文件并停止：{relative}")
+            path.unlink()
+    journal.unlink()
+    print("迁移事务已完成，原文可从 migrations 归档恢复。")
 
 
 def main() -> int:
-    project = Path(parse_args().project).expanduser().resolve()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--project", required=True)
+    project = Path(parser.parse_args().project).expanduser().resolve()
+    core = Path(__file__).resolve().parent.parent
+    ensure_project(project, core)
     delivery = project / ".ai-delivery"
     state_path = delivery / "state.json"
-    profile_path = delivery / "project-profile.yaml"
     if not state_path.is_file():
-        raise SystemExit(f"Delivery state not found: {state_path}")
-
-    state = json.loads(state_path.read_text(encoding="utf-8"))
-    current_version = str(state.get("template_version", "0.1.0"))
-    if current_version == TARGET_VERSION:
-        print(f"Project already uses template version {TARGET_VERSION}: {delivery}")
-        return 0
-    if not current_version.startswith(("0.1", "0.2", "0.3", "0.4", "0.5", "0.6")):
-        raise SystemExit(f"Automatic migration supports 0.1.x through 0.6.x, found {current_version}")
-
-    now = datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
-    backup_name = f"{current_version}-to-{TARGET_VERSION}-{now.replace(':', '').replace('+', '-')}"
-    backup_dir = delivery / "migrations" / backup_name
-    backup_documents = backup_dir / "documents"
-    backup_dir.mkdir(parents=True)
-    shutil.copy2(state_path, backup_dir / "state.json")
-    if profile_path.is_file():
-        shutil.copy2(profile_path, backup_dir / "project-profile.yaml")
-
-    input_dir = project / "AI/input"
-    output_dir = project / "AI/output"
-    input_dir.mkdir(parents=True, exist_ok=True)
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    legacy_artifacts = delivery / "artifacts"
-    for old_name, new_name in {**OUTPUT_RENAMES, **CURRENT_OUTPUT_RENAMES}.items():
-        move_document(
-            [legacy_artifacts / old_name, output_dir / old_name],
-            output_dir / new_name,
-            backup_documents,
-        )
-    for old_name, new_name in {**ROOT_RENAMES, **CURRENT_ROOT_RENAMES}.items():
-        move_document(
-            [delivery / old_name, output_dir / old_name],
-            output_dir / new_name,
-            backup_documents,
-        )
-    move_document(
-        [
-            delivery / "inputs/source-manifest.md",
-            input_dir / "source-manifest.md",
-            input_dir / "输入材料清单.md",
-        ],
-        input_dir / "00 输入材料清单.md",
-        backup_documents,
-    )
-
-    mode = str(state.get("delivery_mode", "standard"))
-    if mode not in ENABLED:
-        mode = "standard"
-        state["delivery_mode"] = mode
-    enabled = ENABLED[mode]
-    old_phases = state.get("phases") if isinstance(state.get("phases"), dict) else {}
-    old_implementation = old_phases.get("implementation", old_phases.get("development", {}))
-    old_verification = old_phases.get("verification", {})
-    verification_status = (
-        str(old_verification.get("status", "not_started"))
-        if isinstance(old_verification, dict) else "not_started"
-    )
-
-    phases: dict[str, dict[str, object]] = {}
-    for phase in PHASES:
-        required = phase in enabled
-        if phase == "development":
-            phases[phase] = phase_record(old_implementation, required)
-        elif phase in {"code_review", "testing"}:
-            existing = old_phases.get(phase)
-            if isinstance(existing, dict):
-                phases[phase] = phase_record(existing, required)
+        raise SystemExit(f"Missing delivery state: {state_path}")
+    if (delivery / ".handoff-transaction.json").exists():
+        raise SystemExit("先恢复待处理的交接事务，再迁移")
+    journal = delivery / ".migration-transaction.json"
+    with exclusive_lock(delivery / ".handoff.lock"):
+        if journal.exists():
+            recover(project, journal)
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        old_version = str(state.get("template_version", "0.1.0"))
+        if old_version == TEMPLATE_VERSION:
+            print(f"Already at {TEMPLATE_VERSION}; no changes")
+            return 0
+        if not re.fullmatch(r"0\.[1-7]\.\d+", old_version):
+            raise SystemExit(f"Unsupported migration version: {old_version}")
+        now = datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
+        mode = state.get("delivery_mode", "standard")
+        if mode not in ENABLED:
+            raise SystemExit(f"Unknown delivery mode: {mode}")
+        output = project / "AI/output"
+        # 在修改任何现有文件前完成别名冲突检查。
+        sources, originals = {}, {}
+        roots = [output, delivery / "artifacts", delivery]
+        for name, aliases in OLD_NAMES.items():
+            candidates = list(dict.fromkeys(
+                path.resolve() for root in roots for alias in [name, *aliases]
+                if (path := root / alias).is_file()
+            ))
+            if candidates:
+                if any(path.read_bytes() != candidates[0].read_bytes() for path in candidates[1:]):
+                    raise SystemExit(f"Document naming conflict: {name}")
+                sources[name] = candidates[0].read_text(encoding="utf-8")
+                for path in candidates:
+                    if not path.is_relative_to(project):
+                        raise SystemExit(f"Source symlink escapes project: {path}")
+                    originals[str(path.relative_to(project))] = path.read_bytes()
+        old_phases = copy.deepcopy(state.get("phases", {}))
+        phases = {}
+        for phase in PHASES:
+            previous = old_phases.get(phase)
+            if phase == "development":
+                previous = old_phases.get("development", old_phases.get("implementation"))
+            phases[phase] = phase_record(previous, phase in ENABLED[mode])
+        for phase in ("code_review", "testing"):
+            if phase not in old_phases and old_phases.get("verification", {}).get("status", "not_started") not in {"not_started", "skipped"}:
+                phases[phase].update(status="stale", note="旧合并验证不等同独立 CR 和测试证据")
+        if phases["ui"]["status"] == "not_started" and "03 界面设计方案.md" not in sources:
+            phases["ui"].update(status="skipped", required=False, note="尚无界面需求，后续按需启用")
+        if "developer_self_test" not in old_phases:
+            passed = bool(re.search(r"(?m)^status:\s*[\"']?passed", sources.get("06 开发自测报告.md", "")))
+            if phases["development"]["status"] in {"complete", "approved"} and passed:
+                phases["developer_self_test"].update(status="complete", note="沿用归档开发自测证据；非新一轮测试")
+        old_release = old_phases.get("release", {})
+        if old_release.get("status") not in {None, "not_started", "skipped"}:
+            phases["release_preparation"].update(status="stale", required=old_release.get("required", True),
+                                                note="旧发布检查不证明真实发布或放量完成，需复核")
+        for phase in RELEASE_PHASES[1:]:
+            phases[phase]["note"] = "不得由旧发布检查单推断实际发布完成"
+        old_retro = old_phases.get("retrospective", {})
+        if old_retro.get("status") not in {None, "not_started", "skipped"}:
+            phases["effect_evaluation"].update(status="stale", required=old_retro.get("required", True),
+                                              note="复核真实效果数据，旧复盘不是发布成功证据")
+        state["legacy_phase_evidence"] = old_phases
+        old_current = state.get("current_phase", "intake")
+        state["current_phase"] = {"implementation": "development", "verification": "code_review",
+                                  "release": "release_preparation", "retrospective": "effect_evaluation"}.get(old_current, old_current)
+        if state["current_phase"] not in PHASES:
+            state["current_phase"] = "intake"
+        revision = state.get("revision", 0) + 1
+        backup_name = f"{old_version}-to-{TEMPLATE_VERSION}-r{revision}"
+        backup = delivery / "migrations" / backup_name
+        if backup.exists():
+            raise SystemExit(f"Backup already exists without pending transaction: {backup}")
+        needed = {PHASE_FILES[phase] for phase, data in phases.items()
+                  if data["status"] not in {"not_started", "skipped", "blocked"}}
+        needed.add(WORKBENCH)
+        new_names = set(PHASE_FILES.values()) - set(OLD_NAMES)
+        for name in needed & new_names:
+            if (output / name).exists():
+                raise SystemExit(f"New-layout destination already exists: {output / name}")
+        values = {"PROJECT_NAME": str(state.get("project_name", project.name)), "PROJECT_ROOT": str(project),
+                  "DELIVERY_MODE": mode, "INTERACTION_MODE": state.get("interaction_mode", "guided"), "CREATED_AT": now}
+        writes = {}
+        for name in needed:
+            if name in {"01 需求文档.md", "02 产品方案.md", "03 界面设计方案.md"} and name in sources:
+                content = sources[name]
             else:
-                phases[phase] = phase_record({}, required)
-                phases[phase]["status"] = split_verification_status(verification_status, required)
+                content = render((core / "assets" / name).read_text(encoding="utf-8"), values)
+                if name == WORKBENCH:
+                    marker = "\n## 7. 交接记录"
+                    before, after = content.split(marker, 1)
+                    content = before
+                    for heading, old_name in GROUPS[name]:
+                        if old_name in sources:
+                            content += f"\n\n## 迁移附录：{heading}\n\n" + body(sources[old_name]) + "\n"
+                    # 保留全部历史交接行；旧模板的空 revision 0 行不覆盖真实历史。
+                    rows = [line for line in sources.get("18 交接记录.md", "").splitlines()
+                            if re.match(r"^\| \d+ \|", line)]
+                    content += marker + "\n\n| Revision | 时间 | 宿主 | 模型 | 阶段 | 已完成 | 下一步 |\n|---|---|---|---|---|---|---|\n"
+                    content += "\n".join(rows) + ("\n" if rows else "")
+                else:
+                    for heading, old_name in GROUPS.get(name, []):
+                        if old_name in sources:
+                            content += f"\n\n## 迁移附录：{heading}\n\n" + body(sources[old_name]) + "\n"
+            if name == WORKBENCH:
+                content += f"| {revision} | {now} | migration | unknown | {state['current_phase']} | 升级到 {TEMPLATE_VERSION}，合并文档并归档原文 | 复核当前阶段与真实证据 |\n"
+            writes["AI/output/" + name] = content
+        manifest = project / "AI/input/00 输入材料清单.md"
+        if not manifest.exists():
+            aliases = [project / "AI/input/source-manifest.md", project / "AI/input/输入材料清单.md",
+                       delivery / "inputs/source-manifest.md"]
+            found = [p for p in aliases if p.is_file()]
+            writes["AI/input/00 输入材料清单.md"] = found[0].read_text(encoding="utf-8") if found else render(
+                (core / "assets/00 输入材料清单.md").read_text(encoding="utf-8"), values)
+        state.update(template_version=TEMPLATE_VERSION, schema_version=SCHEMA_VERSION, revision=revision,
+                     phases=phases, artifact_layout="consolidated-lazy", artifact_overrides={},
+                     last_updated=now, last_actor={"platform": "migration", "model": "unknown", "updated_at": now},
+                     handoff={"summary": f"升级到 {TEMPLATE_VERSION}，原文归档至 {backup_name}",
+                              "next_action": "复核合并文档，继续当前阶段"})
+        state.setdefault("approvals", [])
+        state.setdefault("open_questions", [])
+        runtime = state.setdefault("runtime", {})
+        runtime.setdefault("platform", "unknown")
+        runtime.setdefault("model", "unknown")
+        caps = runtime.setdefault("capabilities", {})
+        for key in CAPABILITY_KEYS:
+            caps.setdefault(key, "unknown")
+        profile_path = delivery / "project-profile.yaml"
+        profile = profile_path.read_text(encoding="utf-8") if profile_path.exists() else render(
+            (core / "assets/project-profile.yaml").read_text(encoding="utf-8"), values)
+        for key, value in (("template_version", TEMPLATE_VERSION), ("schema_version", SCHEMA_VERSION)):
+            if re.search(rf"(?m)^{key}:", profile):
+                profile = re.sub(rf"(?m)^{key}:.*$", f'{key}: "{value}"', profile)
+            else:
+                profile = f'{key}: "{value}"\n' + profile
+        if "artifact_layout:" in profile:
+            profile = re.sub(r"(?m)^\s+artifact_layout:.*$", '  artifact_layout: "consolidated-lazy"', profile)
         else:
-            phases[phase] = phase_record(old_phases.get(phase), required)
-
-    verification_was_progressed = (
-        current_version.startswith(("0.1", "0.2", "0.3"))
-        and verification_status not in {"not_started", "skipped"}
-    )
-    if verification_was_progressed:
-        for downstream in ("release", "retrospective"):
-            if phases[downstream]["status"] in {"review", "approved", "complete"}:
-                phases[downstream]["status"] = "stale"
-
-    old_current = str(state.get("current_phase", "intake"))
-    current_phase = {"implementation": "development", "verification": "code_review"}.get(old_current, old_current)
-    if verification_was_progressed and old_current in {"verification", "release", "retrospective"}:
-        current_phase = "code_review"
-    if current_phase not in phases:
-        current_phase = "intake"
-
-    skill_dir = Path(__file__).resolve().parent.parent
-    values = {
-        "PROJECT_NAME": str(state.get("project_name", project.name)),
-        "PROJECT_ROOT": str(project),
-        "DELIVERY_MODE": mode,
-        "INTERACTION_MODE": str(state.get("interaction_mode", "guided")),
-        "CREATED_AT": now,
-    }
-    for name in list(dict.fromkeys(REQUIRED_OUTPUT + MODE_OUTPUT[mode])):
-        destination = output_dir / name
-        if not destination.exists():
-            atomic_write(destination, render((skill_dir / "assets" / name).read_text(encoding="utf-8"), values))
-    manifest_path = input_dir / "00 输入材料清单.md"
-    if not manifest_path.exists():
-        atomic_write(
-            manifest_path,
-            render((skill_dir / "assets/00 输入材料清单.md").read_text(encoding="utf-8"), values),
-        )
-
-    current_revision = state.get("revision") if isinstance(state.get("revision"), int) else -1
-    next_revision = current_revision + 1
-    state["template_version"] = TARGET_VERSION
-    state["schema_version"] = TARGET_SCHEMA
-    state["revision"] = next_revision
-    state["current_phase"] = current_phase
-    state["phases"] = phases
-    runtime = state.get("runtime") if isinstance(state.get("runtime"), dict) else {}
-    runtime.setdefault("platform", "migration")
-    runtime.setdefault("model", "unknown")
-    capabilities = runtime.get("capabilities") if isinstance(runtime.get("capabilities"), dict) else {}
-    for key in CAPABILITY_KEYS:
-        capabilities.setdefault(key, "unknown")
-    runtime["capabilities"] = capabilities
-    state["runtime"] = runtime
-    state["last_actor"] = {"platform": "migration", "model": "unknown", "updated_at": now}
-    state["handoff"] = {
-        "summary": f"从 {current_version} 升级到 {TARGET_VERSION}，交付文档统一为带序号的中文文件名",
-        "next_action": "重新加载当前阶段并校验带序号的中文文档路径",
-    }
-    state["last_updated"] = now
-
-    handoff_path = output_dir / "18 交接记录.md"
-    handoff = handoff_path.read_text(encoding="utf-8")
-    if not handoff.endswith("\n"):
-        handoff += "\n"
-    handoff += (
-        f"| {next_revision} | {now} | migration | unknown | {current_phase} | "
-        f"从 {current_version} 升级到 {TARGET_VERSION}，文档迁移到 AI/input 与 AI/output 并统一为带序号的中文名 | "
-        "重新读取当前阶段并校验产物 |\n"
-    )
-    atomic_write(handoff_path, handoff)
-    atomic_write(state_path, json.dumps(state, ensure_ascii=False, indent=2) + "\n")
-
-    if profile_path.is_file():
-        profile = profile_path.read_text(encoding="utf-8")
-        if "template_version:" not in profile:
-            profile = f'template_version: "{TARGET_VERSION}"\n' + profile
-        if "schema_version:" not in profile:
-            profile = f'schema_version: "{TARGET_SCHEMA}"\n' + profile
-        profile = re.sub(
-            r'(?m)^template_version:\s*["\']?[^"\'\n]+["\']?\s*$',
-            f'template_version: "{TARGET_VERSION}"', profile, count=1,
-        )
-        profile = re.sub(
-            r'(?m)^schema_version:\s*["\']?[^"\'\n]+["\']?\s*$',
-            f'schema_version: "{TARGET_SCHEMA}"', profile, count=1,
-        )
-        if "input_dir:" not in profile:
-            profile = profile.replace("delivery:\n", 'delivery:\n  input_dir: "AI/input"\n', 1)
-        if "output_dir:" not in profile:
-            profile = profile.replace("delivery:\n", 'delivery:\n  output_dir: "AI/output"\n', 1)
-        profile = re.sub(r'(?m)^\s+artifact_bridge:.*\n?', "", profile)
-        if "compatibility:" not in profile:
-            profile += (
-                "\ncompatibility:\n"
-                "  artifact_layout: \"AI-directories\"\n"
-                "  state_owner: \".ai-delivery\"\n"
-                "  skill_standard: \"agent-skills\"\n"
-                "  runtime_binding: \"dynamic\"\n"
-                "  concurrent_agents: false\n"
-            )
-        elif "artifact_layout:" not in profile:
-            profile = profile.replace("compatibility:\n", 'compatibility:\n  artifact_layout: "AI-directories"\n', 1)
-        if "quality:" not in profile:
-            profile += "\nquality:\n"
-        if "require_developer_self_test:" not in profile:
-            profile = profile.replace("quality:\n", "quality:\n  require_developer_self_test: true\n", 1)
-        if "require_independent_testing:" not in profile:
-            profile = profile.replace("quality:\n", "quality:\n  require_independent_testing: true\n", 1)
-        if "performance_testing:" not in profile:
-            profile = profile.replace("quality:\n", 'quality:\n  performance_testing: "auto"\n', 1)
-        profile = re.sub(r"(?m)^\s+require_tests:\s*.*\n?", "", profile)
-        if re.search(r"(?m)^updated_at:\s*", profile):
-            profile = re.sub(r"(?m)^updated_at:\s*.*$", f'updated_at: "{now}"', profile, count=1)
-        else:
-            profile += f'\nupdated_at: "{now}"\n'
-        atomic_write(profile_path, profile)
-    else:
-        atomic_write(
-            profile_path,
-            render((skill_dir / "assets/project-profile.yaml").read_text(encoding="utf-8"), values),
-        )
-
-    for legacy_link in (delivery / "artifacts", delivery / "inputs"):
-        if legacy_link.is_symlink():
-            legacy_link.unlink()
-        elif legacy_link.is_dir():
-            try:
-                legacy_link.rmdir()
-            except OSError:
-                pass
-
-    print(f"Migrated {delivery} to template version {TARGET_VERSION}")
-    print(f"Backup: {backup_dir}")
-    if verification_was_progressed:
-        print("Previous combined verification was marked stale for separate CR and testing review")
+            profile += '\ncompatibility:\n  artifact_layout: "consolidated-lazy"\n'
+        if "lazy_artifacts:" not in profile:
+            profile = profile.replace("delivery:\n", "delivery:\n  lazy_artifacts: true\n", 1)
+        profile = re.sub(r"(?m)^(  current_phase:|updated_at:).*$",
+                         lambda m: f'  current_phase: "{state["current_phase"]}"' if m[1].startswith(" ") else f'updated_at: "{now}"', profile)
+        writes[".ai-delivery/project-profile.yaml"] = profile
+        writes[".ai-delivery/state.json"] = json.dumps(state, ensure_ascii=False, indent=2) + "\n"
+        # 输出所有原文的独立快照和校验和，后续重新整理文档仍可追溯。
+        backup.mkdir(parents=True)
+        shutil.copy2(state_path, backup / "state.json")
+        if profile_path.exists():
+            shutil.copy2(profile_path, backup / "project-profile.yaml")
+        archived = dict(originals)
+        for path in output.glob("*.md"):
+            archived.setdefault(str(path.relative_to(project)), path.read_bytes())
+        hashes = {}
+        for relative, data in archived.items():
+            target = backup / "documents" / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(data)
+            hashes[relative] = hashlib.sha256(data).hexdigest()
+        atomic_write(backup / "manifest.json", json.dumps(hashes, ensure_ascii=False, indent=2) + "\n")
+        remove = {relative: hashlib.sha256(data).hexdigest() for relative, data in originals.items()
+                  if relative not in writes}
+        transaction = {"base_revision": revision - 1, "next_revision": revision,
+                       "writes": writes, "remove": remove, "backup": str(backup.relative_to(project))}
+        atomic_write(journal, json.dumps(transaction, ensure_ascii=False, indent=2) + "\n")
+        recover(project, journal)
+        print(f"Migrated to {TEMPLATE_VERSION}; backup: {backup}")
     return 0
 
 

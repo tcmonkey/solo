@@ -83,7 +83,7 @@ def main() -> int:
     files = {
         project / "checkstyle.xml": (assets / "checkstyle.xml").read_text(encoding="utf-8"),
         project / "AI/output/19 Java DDD开发规范.md":
-            (core / "references/Java DDD开发规范.md").read_text(encoding="utf-8"),
+            (core / "references/99 Java DDD开发规范.md").read_text(encoding="utf-8"),
     }
     # Validate every target before making any write; preserve independently edited configuration.
     for path, content in files.items():

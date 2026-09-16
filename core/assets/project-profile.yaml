@@ -1,5 +1,5 @@
-schema_version: "1.4"
-template_version: "0.7.0"
+schema_version: "1.5"
+template_version: "0.8.0"
 project:
   name: "{{PROJECT_NAME}}"
   root: "{{PROJECT_ROOT}}"
@@ -8,6 +8,8 @@ delivery:
   mode: "{{DELIVERY_MODE}}"
   interaction: "{{INTERACTION_MODE}}"
   ui_required: "auto"
+  lazy_artifacts: true
+  separate_development_plan: false
   input_dir: "AI/input"
   output_dir: "AI/output"
   current_phase: "intake"
@@ -15,7 +17,7 @@ compatibility:
   state_owner: ".ai-delivery"
   skill_standard: "agent-skills"
   runtime_binding: "dynamic"
-  artifact_layout: "AI-directories"
+  artifact_layout: "consolidated-lazy"
   concurrent_agents: false
 quality:
   require_compile: true
@@ -24,5 +26,9 @@ quality:
   require_independent_testing: true
   performance_testing: "auto"
   require_release_approval: true
+  release_observation: "metrics-baseline-threshold-window"
+  rollout_requires_approval: true
+  require_full_release_confirmation: true
+  require_effect_evaluation: "when-released"
 created_at: "{{CREATED_AT}}"
 updated_at: "{{CREATED_AT}}"
