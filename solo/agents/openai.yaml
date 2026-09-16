@@ -1,0 +1,6 @@
+interface:
+  display_name: "Solo"
+  short_description: "需求、方案、开发自测、代码评审、独立测试与发布的一人交付流程"
+  default_prompt: "使用 $solo 初始化或继续当前项目，自动判断流程规模，默认 guided，并从需求理解开始。"
+policy:
+  allow_implicit_invocation: true

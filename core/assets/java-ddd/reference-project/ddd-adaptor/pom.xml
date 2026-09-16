@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.ddd</groupId>
+        <artifactId>ddd</artifactId>
+        <version>${revision}</version>
+    </parent>
+
+    <artifactId>ddd-adaptor</artifactId>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.ddd</groupId>
+            <artifactId>ddd-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.ddd</groupId>
+            <artifactId>ddd-model</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.ddd</groupId>
+            <artifactId>ddd-application</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.ddd</groupId>
+            <artifactId>ddd-client</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+    </dependencies>
+</project>

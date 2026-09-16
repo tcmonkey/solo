@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.4",
+  "template_version": "0.7.0",
+  "project_name": "{{PROJECT_NAME}}",
+  "delivery_mode": "{{DELIVERY_MODE}}",
+  "interaction_mode": "{{INTERACTION_MODE}}",
+  "revision": 0,
+  "current_phase": "intake",
+  "phases": {},
+  "approvals": [],
+  "open_questions": [],
+  "runtime": {
+    "platform": "{{PLATFORM}}",
+    "model": "{{MODEL}}",
+    "capabilities": {
+      "filesystem": "{{CAP_FILESYSTEM}}",
+      "shell": "{{CAP_SHELL}}",
+      "python": "{{CAP_PYTHON}}",
+      "repository": "{{CAP_REPOSITORY}}",
+      "browser": "{{CAP_BROWSER}}",
+      "persistence": "{{CAP_PERSISTENCE}}"
+    }
+  },
+  "last_actor": {
+    "platform": "{{PLATFORM}}",
+    "model": "{{MODEL}}",
+    "updated_at": "{{CREATED_AT}}"
+  },
+  "handoff": {
+    "summary": "Workflow initialized",
+    "next_action": "Ingest sources and complete intake"
+  },
+  "last_updated": "{{CREATED_AT}}"
+}

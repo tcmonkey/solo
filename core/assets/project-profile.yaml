@@ -1,0 +1,28 @@
+schema_version: "1.4"
+template_version: "0.7.0"
+project:
+  name: "{{PROJECT_NAME}}"
+  root: "{{PROJECT_ROOT}}"
+  repository: "unknown"
+delivery:
+  mode: "{{DELIVERY_MODE}}"
+  interaction: "{{INTERACTION_MODE}}"
+  ui_required: "auto"
+  input_dir: "AI/input"
+  output_dir: "AI/output"
+  current_phase: "intake"
+compatibility:
+  state_owner: ".ai-delivery"
+  skill_standard: "agent-skills"
+  runtime_binding: "dynamic"
+  artifact_layout: "AI-directories"
+  concurrent_agents: false
+quality:
+  require_compile: true
+  require_developer_self_test: true
+  require_code_review: true
+  require_independent_testing: true
+  performance_testing: "auto"
+  require_release_approval: true
+created_at: "{{CREATED_AT}}"
+updated_at: "{{CREATED_AT}}"
