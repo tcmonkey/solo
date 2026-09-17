@@ -171,7 +171,8 @@ def main() -> int:
             if (output / name).exists():
                 raise SystemExit(f"New-layout destination already exists: {output / name}")
         values = {"PROJECT_NAME": str(state.get("project_name", project.name)), "PROJECT_ROOT": str(project),
-                  "DELIVERY_MODE": mode, "INTERACTION_MODE": state.get("interaction_mode", "guided"), "CREATED_AT": now}
+                  "DELIVERY_MODE": mode, "EXECUTION_GOAL": state.get("execution_goal", "auto"),
+                  "INTERACTION_MODE": state.get("interaction_mode", "guided"), "CREATED_AT": now}
         writes = {}
         for name in needed:
             if name in {"01 需求文档.md", "02 产品方案.md", "03 界面设计方案.md"} and name in sources:

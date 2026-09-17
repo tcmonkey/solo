@@ -12,7 +12,7 @@ python3 /Users/monkey/Documents/kit/workspace/solo/installers/install.py --platf
 /solo
 ```
 
-不附加参数时，新项目自动选择流程规模，使用 `guided` 模式；已有 `.ai-delivery/state.json` 的项目根据保存状态继续。已知需求或目标阶段可以追加在同一条消息中。
+不附加参数时，先展示完整14步及简易/平衡/完整模式，只问未知的项目目录和需求/附件；不要求先指定节点。理解需求后推荐模式和本次路线，默认guided，先确认需求范围。已有状态时展示进度和下一步，不重问已知信息。可用“先出方案”“功能可运行”“上线前可验收”“上线交付”表达终点，也可以不填。
 
 也可打开 `/skills` 选择 solo。共享技能遵循 Qwen Code 当前项目指令，将机器状态持久保存于 `.ai-delivery/`，将中文名 Markdown 文档写入 `AI/output/`。
 

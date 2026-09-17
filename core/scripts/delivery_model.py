@@ -56,6 +56,76 @@ VALID_STATES = {
     "skipped", "stale", "blocked", "complete",
 }
 CAPABILITY_KEYS = ("filesystem", "shell", "python", "repository", "browser", "persistence")
+MODE_LABELS = {"lite": "简易", "standard": "平衡", "full": "完整"}
+GOAL_LABELS = {
+    "auto": "待确认",
+    "plan_only": "方案想清楚", "development_ready": "功能可运行（自测和CR完成）",
+    "release_ready": "上线前可验收（含发布准备）", "full_delivery": "上线交付闭环",
+}
+GOAL_ENDS = {"plan_only": "planning", "development_ready": "code_review",
+             "release_ready": "release_preparation", "full_delivery": "effect_evaluation"}
+STEPS = [
+    ("01", "需求梳理", ("intake", "requirements")),
+    ("02", "产品方案", ("product",)), ("03", "UI设计（按需）", ("ui",)),
+    ("04", "技术方案与计划", ("technical", "planning")),
+    *[(f"{index:02}", label, (phase,)) for index, label, phase in [
+        (5, "编码开发", "development"), (6, "开发自测", "developer_self_test"),
+        (7, "代码评审（CR）", "code_review"), (8, "独立测试", "testing"),
+        (9, "发布准备", "release_preparation"), (10, "初始发布", "initial_release"),
+        (11, "发布观测", "observation"), (12, "分批放量", "rollout"),
+        (13, "完整发布确认", "full_release"), (14, "效果评估", "effect_evaluation"),
+    ]],
+]
+
+
+def normalize_mode(value: str) -> str:
+    mode = {label: key for key, label in MODE_LABELS.items()}.get(value, value.lower())
+    if mode not in MODE_LABELS:
+        raise ValueError(f"Unknown delivery mode: {value}")
+    return mode
+
+
+def normalize_goal(value: str) -> str:
+    goal = {label: key for key, label in GOAL_LABELS.items()}.get(value, value)
+    if goal not in GOAL_LABELS:
+        raise ValueError(f"Unknown execution goal: {value}")
+    return goal
+
+
+def enabled_phases(mode: str, goal: str) -> set[str]:
+    enabled = set(ENABLED[mode])
+    if goal == "release_ready":
+        enabled.add("release_preparation")
+    elif goal == "full_delivery":
+        enabled.update([*RELEASE_PHASES, "effect_evaluation"])
+    return enabled
+
+
+def route_plan(mode: str, goal: str = "auto", ui_required: bool = False, resume: bool = False) -> dict:
+    """路线只是本次范围展示，不修改阶段历史或赋予执行权限。"""
+    mode, goal = normalize_mode(mode), normalize_goal(goal)
+    terminal = GOAL_ENDS.get(goal) or (None if resume else "code_review")
+    end = PHASES.index(terminal) if terminal else len(PHASES) - 1
+    enabled = enabled_phases(mode, goal)
+    if ui_required:
+        enabled.add("ui")
+    selected, deferred, merged, optional = [], [], [], []
+    for number, label, phases in STEPS:
+        step = {"number": number, "label": label, "phases": list(phases)}
+        if PHASES.index(phases[0]) > end:
+            deferred.append(step)
+        elif number == "02" and mode == "lite":
+            merged.append({**step, "reason": "必要产品规则并入01需求"})
+        elif number == "03" and not ui_required:
+            optional.append({**step, "reason": "按界面需要启用，不默认生成UI"})
+        elif any(phase in enabled for phase in phases):
+            selected.append(step)
+        else:
+            optional.append({**step, "reason": "待实际发布范围确定后启用，模式不免除发布关口"})
+    return {"mode": mode, "mode_label": MODE_LABELS[mode], "goal": goal,
+            "goal_label": GOAL_LABELS[goal], "terminal_phase": terminal,
+            "goal_is_recommendation": goal == "auto" and not resume,
+            "selected": selected, "deferred": deferred, "merged": merged, "optional": optional}
 
 
 def render(text: str, values: dict[str, str]) -> str:

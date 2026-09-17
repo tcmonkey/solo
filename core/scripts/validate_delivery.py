@@ -8,7 +8,8 @@ import json
 import re
 from pathlib import Path
 
-from delivery_model import CAPABILITY_KEYS, PHASE_FILES, PHASES, RELEASE_PHASES, SCHEMA_VERSION, TEMPLATE_VERSION, VALID_STATES, WORKBENCH
+from delivery_model import (CAPABILITY_KEYS, GOAL_LABELS, MODE_LABELS, PHASE_FILES, PHASES,
+                            RELEASE_PHASES, SCHEMA_VERSION, TEMPLATE_VERSION, VALID_STATES, WORKBENCH)
 
 ACTIVE = {"in_progress", "review", "approved", "complete", "stale"}
 DONE = {"approved", "complete"}
@@ -61,6 +62,12 @@ def main() -> int:
             errors.append(f"Unsupported template/schema; run migrate_project.py for {TEMPLATE_VERSION}/{SCHEMA_VERSION}")
         if state.get("artifact_layout") != "consolidated-lazy":
             errors.append("artifact_layout must be consolidated-lazy")
+        if not isinstance(state.get("delivery_mode"), str) or state.get("delivery_mode") not in MODE_LABELS:
+            errors.append("Invalid delivery_mode")
+        # 终点是向后兼容可选字段，不从缺失值重建审批或阶段状态。
+        goal = state.get("execution_goal", "auto")
+        if not isinstance(goal, str) or goal not in GOAL_LABELS:
+            errors.append("Invalid execution_goal")
         phases = state.get("phases", {})
         if not isinstance(phases, dict):
             phases = {}
@@ -148,6 +155,13 @@ def main() -> int:
     profile = delivery / "project-profile.yaml"
     if profile.is_file():
         profile_text = profile.read_text(encoding="utf-8")
+        match = re.search(r'(?m)^  execution_goal:\s*["\']?([^"\'\s]+)["\']?\s*$', profile_text)
+        if re.search(r'(?m)^  execution_goal:', profile_text) and not match:
+            errors.append("project-profile.yaml invalid execution_goal")
+        if match and match[1] != state.get("execution_goal", "auto"):
+            errors.append("project-profile.yaml execution_goal is inconsistent with state")
+        elif not match and state.get("execution_goal", "auto") != "auto":
+            errors.append("project-profile.yaml missing execution_goal")
         for key, value in (("template_version", TEMPLATE_VERSION), ("schema_version", SCHEMA_VERSION)):
             if not re.search(rf'(?m)^{key}:\s*["\']?{re.escape(value)}["\']?\s*$', profile_text):
                 errors.append(f"project-profile.yaml {key} is inconsistent")

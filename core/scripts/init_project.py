@@ -9,7 +9,8 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from delivery_model import CAPABILITY_KEYS, ENABLED, PHASES, SCHEMA_VERSION, TEMPLATE_VERSION, WORKBENCH, ensure_project, render
+from delivery_model import (CAPABILITY_KEYS, GOAL_LABELS, PHASES, SCHEMA_VERSION, TEMPLATE_VERSION,
+                            WORKBENCH, enabled_phases, ensure_project, normalize_goal, normalize_mode, render)
 
 
 def parse_capabilities(entries: list[str]) -> dict[str, str]:
@@ -29,7 +30,8 @@ def parse_capabilities(entries: list[str]) -> dict[str, str]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--project", required=True)
-    parser.add_argument("--mode", choices=sorted(ENABLED), default="standard")
+    parser.add_argument("--mode", type=normalize_mode, default="standard")
+    parser.add_argument("--goal", type=normalize_goal, default="auto", help="Optional outcome, not a production approval")
     parser.add_argument("--interaction", choices=("guided", "continuous"), default="guided")
     parser.add_argument("--platform", default="unknown")
     parser.add_argument("--model", default="unknown")
@@ -45,7 +47,7 @@ def main() -> int:
     now = datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
     values = {
         "PROJECT_NAME": project.name, "PROJECT_ROOT": str(project),
-        "DELIVERY_MODE": args.mode, "INTERACTION_MODE": args.interaction,
+        "DELIVERY_MODE": args.mode, "EXECUTION_GOAL": args.goal, "INTERACTION_MODE": args.interaction,
         "CREATED_AT": now, "PLATFORM": args.platform, "MODEL": args.model,
         **{"CAP_" + key.upper(): value for key, value in capabilities.items()},
     }
@@ -65,12 +67,15 @@ def main() -> int:
     state = json.loads(render((core / "assets/state.json").read_text(encoding="utf-8"), values))
     state.update(template_version=TEMPLATE_VERSION, schema_version=SCHEMA_VERSION,
                  artifact_layout="consolidated-lazy", artifact_overrides={})
+    enabled = enabled_phases(args.mode, args.goal)
     state["phases"] = {
-        phase: {"status": "not_started" if phase in ENABLED[args.mode] else "skipped",
-                "required": phase in ENABLED[args.mode], "approved_at": None}
+        phase: {"status": "not_started" if phase in enabled else "skipped",
+                "required": phase in enabled, "approved_at": None}
         for phase in PHASES
     }
     state["phases"]["ui"]["note"] = "按界面变化启用；Full 也不强制生成 UI 文档"
+    if args.mode == "lite":
+        state["phases"]["product"]["note"] = "必要产品规则并入01需求，不单独生成产品文档"
     state["phases"]["intake"]["status"] = "in_progress"
     delivery.mkdir(parents=True)
     for path, content in contents.items():
@@ -78,6 +83,7 @@ def main() -> int:
         path.write_text(content, encoding="utf-8")
     (delivery / "state.json").write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"Initialized {delivery}; mode={args.mode}; interaction={args.interaction}")
+    print(f"本次成果：{GOAL_LABELS[args.goal]}；终点之后的整体必要步骤保留未开始，不自动授权发布。")
     print("仅创建输入清单和交付工作台；确认需求理解后再生成 01 需求文档.md。")
     return 0
 

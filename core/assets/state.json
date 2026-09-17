@@ -5,6 +5,7 @@
   "artifact_overrides": {},
   "project_name": "{{PROJECT_NAME}}",
   "delivery_mode": "{{DELIVERY_MODE}}",
+  "execution_goal": "{{EXECUTION_GOAL}}",
   "interaction_mode": "{{INTERACTION_MODE}}",
   "revision": 0,
   "current_phase": "intake",

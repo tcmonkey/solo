@@ -6,6 +6,7 @@ project:
   repository: "unknown"
 delivery:
   mode: "{{DELIVERY_MODE}}"
+  execution_goal: "{{EXECUTION_GOAL}}"
   interaction: "{{INTERACTION_MODE}}"
   ui_required: "auto"
   lazy_artifacts: true
