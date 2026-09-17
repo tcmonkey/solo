@@ -4,7 +4,7 @@
 
 当前版本：`0.8.0`
 
-入口、阶段规范和宿主使用说明统一采用中文。`SKILL.md` 等协议文件名、配置键、机器状态值、命令和代码标识符保持原样，便于脚本及各宿主识别；宿主安装方式不变；本版收敛交付文档，并补齐发布观测、放量、完整确认与效果评估。
+入口、阶段规范和宿主使用说明统一采用中文。`SKILL.md` 等协议文件名、配置键、机器状态值、命令和代码标识符保持原样。安装器从共享源自动构建完整技能目录，不再依赖内部资源软链接；交付流程版本保持不变。
 
 ## 先区分宿主和模型
 
@@ -23,16 +23,20 @@ solo/
 │   ├── assets/                   # 交付文档和状态模板
 │   └── scripts/                  # 初始化、迁移、校验和交接
 ├── adapters/
-│   ├── codex/                    # $solo
-│   ├── claude-code/              # /solo
-│   └── qwen-code/                # /solo
-├── installers/
-├── dist/                         # 可上传和分享的构建产物
+│   ├── codex/                    # USAGE.md + agents/openai.yaml
+│   ├── claude-code/              # USAGE.md
+│   └── qwen-code/                # USAGE.md
+├── installers/                   # 构建、安装、更新与回归测试
+├── dist/                         # 自动生成，不手工编辑
+│   ├── codex/solo/               # 完整真实文件 + Codex 元数据
+│   ├── claude-code/solo/         # 完整真实文件
+│   ├── qwen-code/solo/           # 完整真实文件
+│   └── portable/solo.zip         # 通用单目录发行包
 ├── START.md                      # 跨宿主使用参考
-└── solo/                        # Codex UI 元数据与共享内核入口
+└── README.md
 ```
 
-平台适配器通过符号链接读取同一个 `core/`。修改公共流程、模板或脚本时只维护一份。
+构建规则：`core 公共内容 + adapters/<宿主> 的专属配置 → dist/<宿主>/solo`。只在 core 维护公共流程、规范、模板和脚本；产物可重复生成，不属于多份维护源。adapters 下的 USAGE.md 不装入技能目录。
 
 ## 目录职责与目录改名
 
@@ -41,16 +45,15 @@ solo/
 | 目录 | 作用 | 日常是否需要修改 |
 |---|---|---|
 | `core/` | 唯一维护源：流程入口、阶段规范、文档/检查模板及执行脚本。 | 优化流程与规范时修改这里。 |
-| `solo/` | 实际 Skill 入口；共享内容链接到 core，agents 保存 Codex 展示和默认调用元数据。 | 一般不改；展示名称调整时修改 agents。 |
-| `adapters/` | 各宿主的安装入口和使用说明；并非每个平台维护一套独立规范。 | 增加或调整宿主支持时修改。 |
-| `installers/` | 本地安装及打包工具；安装通过用户级软链接让新项目发现 Skill。 | 安装机制或产物结构变化时修改。 |
-| `dist/` | 生成的 solo.zip 与校验清单；可重新构建，不直接编辑。 | 分享或后续宿主适配时使用。 |
+| `adapters/` | 使用说明和实际专属配置；Codex 元数据在 adapters/codex/agents。 | 增加或调整宿主支持时修改。 |
+| `installers/` | 构建完整目录并安装/更新；校验归属和文件完整性。 | 安装机制变化时修改。 |
+| `dist/` | 完整技能目录、ZIP 与 SHA256 清单；不手工编辑。 | 由安装或构建命令生成。 |
 
-普通 Skill 的 SKILL.md、references、assets、scripts 已在 solo 入口中具备；额外目录服务于“跨宿主安装、单源维护、可上传打包”，不要求 AI 每次读取整个工具包。references 是给 AI 阅读的约束，assets 是生成到业务项目的模板，scripts 是执行初始化/迁移/校验/交接等任务的工具；业务代码与 AI/input、AI/output 不存放在此工具包里。
+普通 Skill 的 SKILL.md、references、assets、scripts 在每份产物中完整具备，内部全部是真实文件。额外目录服务于“跨宿主安装、单源维护、完整分发”，不要求 AI 每次读取整个工具包。references 是 AI 阅读的约束，assets 是生成到业务项目的模板，scripts 是初始化/迁移/校验/交接工具；业务代码与 AI/input、AI/output 不存放在此工具包里。
 
-外层 solo 可以改名，技能名仍然是 solo，但当前用户级安装使用绝对路径软链接，外层改名会令已安装入口失效。需修复这些链接或先移除确认属于本工具包的失效安装链接，再从新路径执行安装器；安装器不会直接覆盖冲突链接。内部相对链接、按自身位置定位的脚本和已导出的 ZIP 不依赖外层文件夹名称；README/START/使用说明中的示例绝对路径和用户保存的快捷命令则需同步修改。
+外层 solo 可以改名，技能名仍然是 solo，但 Codex 安装链接及生成归属标记记录了源路径。改名或移动前需规划迁移：新路径安装器不会把旧路径入口自动认作自己管理的入口。其他宿主的真实副本仍可读取，但更新时也需协调旧归属。脚本按自身位置寻找资源，完整产物或 ZIP 可独立使用，不依赖 core 所在位置；说明中的绝对路径示例和快捷命令也需同步修改。
 
-旧名称 solo-delivery 的本工具包安装链接会在执行安装器后自动迁移为 solo；其他来源的同名技能不会被删除。
+旧名称 solo-delivery、旧 solo/solo 与 adapters 下的入口链接，可由安装器按已知目标安全迁移；只移除本工具管理的旧链接，不删除其指向的公共内容。其他来源的同名技能不会被覆盖或删除。
 
 ## 本地编码宿主安装
 
@@ -64,11 +67,15 @@ python3 /Users/monkey/Documents/kit/workspace/solo/installers/install.py --platf
 
 | 宿主 | 默认个人位置 | 调用方式 |
 |---|---|---|
-| Codex | 新安装优先 `~/.agents/skills/solo`；保留已有 `~/.codex/skills/solo` | `$solo` 或 `/skills` |
-| Claude Code | `~/.claude/skills/solo` | `/solo` |
-| Qwen Code | `~/.qwen/skills/solo` | `/solo` 或 `/skills` |
+| Codex | `~/.agents/skills/solo` → `dist/codex/solo`，一层目录链接 | `$solo` 或 `/skills` |
+| Claude Code | `~/.claude/skills/solo`，完整真实文件副本 | `/solo` |
+| Qwen Code | `~/.qwen/skills/solo`，完整真实文件副本 | `/solo` 或 `/skills` |
 
-Codex 可通过 `--codex-location agents` 或 `--codex-location codex` 明确选择位置。安装器遇到已有非本工具管理的目录时会报告冲突，并继续检查其他平台，不会覆盖。
+安装命令也是更新命令：自动构建后同步所选宿主。修改 core 或平台配置后必须重新执行安装，不再通过内部软链接即时生效。仅构建会更新 Codex 所链接的目录，但不会同步其他宿主的已安装副本，因此日常推荐安装命令。
+
+Codex 自动模式统一选择官方用户级 .agents 路径，并移除本工具管理的另一处重复旧链接；`--codex-location codex` 保留为明确指定旧位置的选项。可用 `--install-mode copy` 安装 Codex 真实副本；已有副本更新时继续指定 copy，不自动删除目录切换为链接。其他宿主默认 copy，只有实际验证支持后才考虑 `--install-mode symlink`。
+
+预览操作：`python3 installers/install.py --platform all --dry-run`，不构建、不写文件。外来目录、外来链接或被手工改动的生成文件会报告冲突并保留；一个宿主的安装冲突不阻断其他宿主。生成目录的 .solo-generated.json 保存归属和文件校验值，dist/manifest.json 保存发行清单；Python 缓存不进入发行包，也不被当作手工改动。
 
 ## 最短启动方式
 
@@ -110,6 +117,20 @@ python3 /Users/monkey/Documents/kit/workspace/solo/installers/build_distribution
 ```
 
 压缩包包含单一顶层 `solo/`，内部有 `SKILL.md`、规范、模板和脚本。它保留通用分发能力，但不意味着任意宿主都已验证兼容；接入新宿主前须确认安装协议、调用方式、工具能力和实际运行效果。当前不维护普通聊天模式 Playbook。
+
+该命令同时生成三个宿主的完整目录。新宿主只需增加实际差异配置及安装规则，不需要复制公共规范。
+
+## 安装结构验证
+
+```bash
+python3 /Users/monkey/Documents/kit/workspace/solo/installers/test_installation.py
+```
+
+回归覆盖真实文件、清单/ZIP 校验、独立资源路径、安装/更新、旧链接迁移、冲突保护及 dry-run。结构测试不等于宿主行为测试：Codex 还需调用实际技能发现接口；Claude Code 和 Qwen Code 的选择器及端到端行为需在对应宿主中验证，未验证前不宣称已兼容。
+
+Codex 发现检查：`python3 installers/verify_codex_discovery.py`。它只启动一个短生命周期的诊断 app-server，查询 skills/list，不启动模型任务、不修改配置、不结束桌面应用。2026-09-17 已用本机捆绑版本 codex-cli 0.154.0-alpha.6.2 验证：solo 唯一、启用、展示元数据完整、发现错误为空；这不代替输入框补全的界面验证。其他两个宿主当前仅验证构建与安装结构，本次未检测到其命令行程序。
+
+同日回归结果：安装/迁移/冲突与故障恢复 16 项通过；交付流程 10 项在共享源及 Codex 产物中分别通过；Codex 产物的 Java DDD 门禁 7 项通过；三个宿主产物的 Skill 格式校验通过。已安装入口已迁移，重复旧 Codex 链接已移除；ddd 工程与公共规范、参考代码内容未改动。
 
 ## 宿主能力与降级
 
@@ -218,4 +239,4 @@ Spring 项目中，纯注入构造器（DOC-005）及构造器注入的依赖字
 
 ## 模板迭代
 
-项目经验先记录到该项目的 `AI/output/08 效果评估与复盘.md`。确认应成为公共规则后，再修改 `solo/core/` 并重新构建发行包。不要让单个项目自动改写公共模板。
+项目经验先记录到该项目的 `AI/output/08 效果评估与复盘.md`。确认应成为公共规则后，再修改 `solo/core/` 并执行安装命令更新使用中的宿主。不要让单个项目自动改写公共模板。

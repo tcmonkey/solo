@@ -13,6 +13,9 @@ target/
 /nbproject/private/
 /nbbuild/
 /dist/
+# Python 运行缓存不属于技能资源。
+__pycache__/
+*.pyc
 /nbdist/
 /.nb-gradle/
 build/

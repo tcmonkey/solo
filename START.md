@@ -8,6 +8,8 @@
 
 当前维护以上三个编码宿主。其他宿主后续按需求适配；通用 `dist/portable/solo.zip` 仅作为分发资源，不代表已验证兼容。普通聊天模式降级入口已移除。
 
+首次安装及后续更新使用同一命令：`python3 /Users/monkey/Documents/kit/workspace/solo/installers/install.py --platform all`。它从 core 与平台配置构建完整产物，再同步个人技能目录；修改 core 后需要重新运行。Codex 使用一层目录链接，其他两个宿主默认真实副本；不再维护 adapters 下的公共资源链接外壳。
+
 裸调用时自动判断初始化或继续；新项目默认使用 `auto + guided` 并从需求理解开始。
 
 ## 本次操作
