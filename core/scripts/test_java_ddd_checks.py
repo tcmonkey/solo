@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
 import tempfile
 import unittest
@@ -215,6 +216,88 @@ public interface DemoRepository {
         self.assertEqual(original, (self.root / "pom.xml").read_bytes())
         self.assertEqual("<user-config/>\n", (self.root / "checkstyle.xml").read_text())
         self.assertFalse((self.root / "AI").exists())
+
+    def test_pure_injection_constructors_and_fields_need_no_javadoc(self):
+        self.install()
+        # Local annotations test the AST scope, not Spring's runtime scanning.
+        annotations = ["Component", "Service", "Repository", "Controller", "RestController",
+                       "Configuration", "DomainService"]
+        for annotation in annotations:
+            self.write(self.source + "example/demo/common/" + annotation + ".java",
+                       "package example.demo.common;\n\n/**\n * 扫描标记语法样本。\n *\n"
+                       " * @author AIGenerator\n */\npublic @interface " + annotation + " {\n}\n")
+            self.write(self.source + "example/demo/common/Demo" + annotation + ".java",
+                       "package example.demo.common;\n\n/**\n * 纯依赖装配样本。\n *\n"
+                       " * @author AIGenerator\n */\n@" + annotation + "\npublic class Demo" + annotation
+                       + " {\n"
+                       "    private final String dependency;\n\n    public Demo" + annotation
+                       + "(String dependency) {\n        this.dependency = dependency;\n    }\n}\n")
+        result = self.maven("clean", "compile")
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+        name = self.source + "example/demo/common/DemoComponent.java"
+        valid = (self.root / name).read_text(encoding="utf-8")
+        variants = {
+            "validation": valid.replace("this.dependency = dependency;",
+                                        'if (dependency == null) {\n'
+                                        '            throw new IllegalArgumentException("dependency");\n'
+                                        '        }\n        this.dependency = dependency;'),
+            "initialization": valid.replace("this.dependency = dependency;",
+                                            "this.dependency = dependency.trim();"),
+            "unscanned": valid.replace("@Component\n", ""),
+            "mutable_field": valid.replace("private final String", "private String"),
+            "additional_assignment": valid.replace("this.dependency = dependency;",
+                                                    "this.dependency = dependency;\n"
+                                                    "        System.setProperty(\"demo\", dependency);"),
+            "overloaded": valid.replace("\n}\n", "\n    public DemoComponent() {\n"
+                                        "        this.dependency = null;\n    }\n}\n"),
+        }
+        for variant, source in variants.items():
+            with self.subTest(constructor=variant):
+                self.write(name, source)
+                result = self.maven("validate")
+                output = result.stdout + result.stderr
+                self.assertNotEqual(0, result.returncode, output)
+                self.assertIn("MissingJavadocMethod", output)
+        # Exempt dependency fields only; do not hide business state or constants.
+        for field in [
+            '    private final String state = "ready";\n',
+            '    private String state;\n',
+            '    private static final String STATE = "ready";\n',
+        ]:
+            with self.subTest(undocumented_non_dependency=field):
+                self.write(name, valid.replace("    private final String dependency;",
+                                               field + "    private final String dependency;"))
+                result = self.maven("validate")
+                output = result.stdout + result.stderr
+                self.assertNotEqual(0, result.returncode, output)
+                self.assertIn("JavadocVariable", output)
+        self.write(name, valid)
+        result = self.maven("validate")
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+    def test_diagnostics_are_readable_with_different_output_charsets(self):
+        self.install()
+        self.write(self.application, APPLICATION.replace("demoCommand", "wrongCommand"))
+        expected = ("NAM-TYPE-PARAM: Request/Command parameter name must match its full type "
+                    "in lowerCamelCase")
+        for charset in ["UTF-8", "US-ASCII"]:
+            with self.subTest(output_charset=charset):
+                environment = os.environ.copy()
+                environment["MAVEN_OPTS"] = environment.get("MAVEN_OPTS", "") + (
+                    " -Dfile.encoding=" + charset + " -Duser.language=zh -Duser.country=CN"
+                )
+                result = subprocess.run(["mvn", "-q", "compile"], cwd=self.root, env=environment,
+                                        capture_output=True, timeout=180)
+                output = (result.stdout + result.stderr).decode("utf-8", errors="strict")
+                self.assertNotEqual(0, result.returncode, output)
+                self.assertIn(expected, output)
+                diagnostic = next(line for line in output.splitlines() if expected in line)
+                self.assertTrue(diagnostic.isascii(), diagnostic)
+                self.assertFalse((self.root / "demo-application/target/classes").exists())
+        self.write(self.application, APPLICATION)
+        result = self.maven("compile")
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
 
     def test_pom_shapes_and_existing_plugin_conflict(self):
         fragment = (CORE / "assets/java-ddd/maven-checkstyle-plugin.xml").read_text()

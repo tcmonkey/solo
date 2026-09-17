@@ -58,9 +58,11 @@ python3 <skill-dir>/scripts/migrate_project.py --project <project-root>
 
 编码、自测与 CR 共用文档不意味着互相验收；发布子阶段也不得合并判定。state.json 是逐阶段事实源，共享文档 frontmatter 只表示整份文档总体状态。在工作台维护阶段索引、来源、需求—方案—任务—代码—验证—发布/效果追踪、审批、风险问题和交接。未生成文档仅列拟定名称，不提供失效链接。
 
-采用 Java DDD 模板时，阅读 [99 Java DDD开发规范](references/99%20Java%20DDD开发规范.md)。当前规范优先于已被覆盖的历史沟通；保留 C/P/R 自动检查边界。开发计划按任务选 assets/java-ddd/reference-project/README.md 中的参考链路，实施时阅读实际文件；不复制所有演示模式、不绑定原 ddd 工程绝对路径。
+采用 Java DDD 模板时，阅读 [99 Java DDD开发规范](references/99%20Java%20DDD开发规范.md)。当前规范优先于已被覆盖的历史沟通；保留 C/P/R 自动检查边界，按 DOC-005 区分纯装配与业务构造器注释，按 MAV-007 保持门禁诊断跨宿主可读。开发计划按任务选 assets/java-ddd/reference-project/README.md 中的参考链路，实施时阅读实际文件；不复制所有演示模式、不绑定原 ddd 工程绝对路径。
 
 Java Maven 聚合根建好、正式编码前执行 scripts/install_java_ddd_checks.py --project <project-root>，安装工程自己的 Checkstyle、继承门禁与 19 Java DDD开发规范.md 副本；配置冲突先协调，不覆盖。生产须重新设计真实模型并替换 H2、外部模拟、规则来源和演示配置，不声称示例已生产就绪。
+
+生成 Spring 项目时，构造器注入的依赖字段与纯装配构造器不写重复注释；业务状态字段、常量、日志字段、业务构造器和公开接口方法保留必要说明。此默认约定不限于 ddd 示例，细则见开发阶段规范；已有项目明确规范优先。
 
 ## 状态、确认与授权
 

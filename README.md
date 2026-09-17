@@ -214,6 +214,8 @@ python3 /Users/monkey/Documents/kit/workspace/solo/core/scripts/migrate_project.
 
 可手动执行 `python3 core/scripts/install_java_ddd_checks.py --project /项目绝对路径`，再从项目聚合根执行 `mvn clean compile`。规范中区分自动校验和人工审查，编译通过不代表全部架构约束已验证。
 
+Spring 项目中，纯注入构造器（DOC-005）及构造器注入的依赖字段（DOC-006）不写重复注释；业务字段、常量和日志字段仍保留说明，此约定不限于 ddd 示例；业务构造器、公开方法与接口契约继续保留多行中文 Javadoc。门禁消息使用英文 ASCII 和稳定规则 ID（MAV-007），不改变中文注释或业务错误信息；回归脚本 `python3 core/scripts/test_java_ddd_checks.py` 验证例外边界及不同输出编码。
+
 ## 模板迭代
 
 项目经验先记录到该项目的 `AI/output/08 效果评估与复盘.md`。确认应成为公共规则后，再修改 `solo/core/` 并重新构建发行包。不要让单个项目自动改写公共模板。
