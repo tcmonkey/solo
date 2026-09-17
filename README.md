@@ -247,6 +247,8 @@ python3 /Users/monkey/Documents/kit/workspace/solo/core/scripts/migrate_project.
 
 ## Java DDD 编码规范与自动检查
 
+技术方案草案生成后必须对整个方案做可行性反思与反例推演，发现矛盾回改正文并重新推演，区分推理、已执行实验和待验证条件；默认不估算人天/工时，实际排期由当事人决定。详见 [技术方案阶段规范](<core/references/05 技术方案阶段规范.md>)。
+
 采用本工具 Java DDD 参考规范时，先阅读 [Java DDD开发规范](<core/references/99 Java DDD开发规范.md>)。开发阶段会为新 Maven 聚合工程安装根 `checkstyle.xml`、根 POM 的 validate 门禁和 `AI/output/19 Java DDD开发规范.md` 快照；无需逐个子模块配置。已有检查配置冲突时先融合，不直接覆盖。
 
 已确认的参考代码快照位于 [reference-project](core/assets/java-ddd/reference-project/README.md)，包含八个 Maven module 的源码、POM、必要配置和测试，不包含 IDE/Git/构建产物或交付历史。开发计划按任务映射对应示例，编码阶段按需读取并生成真实业务逻辑；不自动复制全部演示链路。规范、参考代码与检查配置一并包含于 solo.zip。原 ddd 工程继续独立调试，用户确认后再更新公共快照。
@@ -258,3 +260,7 @@ Spring 项目中，纯注入构造器（DOC-005）及构造器注入的依赖字
 ## 模板迭代
 
 项目经验先记录到该项目的 `AI/output/08 效果评估与复盘.md`。确认应成为公共规则后，再修改 `solo/core/` 并执行安装命令更新使用中的宿主。不要让单个项目自动改写公共模板。
+
+## 最新工程边界约束（2026-09-17）
+
+Java规范1.7：Controller、Application、DomainService及OutAdaptor实现主入口必须各自完整try-catch，禁止向上抛出、throws和catch重抛；事务完成/回滚后才转换结果，提交失败也必须捕获。默认Checkstyle新增ERR-BOUNDARY-CATCH/THROWS/RETHROW，错误语义与事务仍需专项验证。有前端时自动建立同级`<项目名>-app`独立项目；AI设计/接口/数据库说明与证据归AI/output，正式迁移、源码、测试和运行脚本保留构建位置。参考快照1.5同步当前ddd源码与新增失败回归。

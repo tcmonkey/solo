@@ -35,9 +35,13 @@ public class DemoApplication {
      * @author AIGenerator
      */
     public Result<DemoResult> query(DemoCommand demoCommand) {
-        // 1. 从命令取得业务标识并创建应用结果。
-        DemoResult result = new DemoResult(demoCommand.id());
-        return new Result<>(result);
+        try {
+            // 1. 从命令取得业务标识并创建应用结果。
+            DemoResult result = new DemoResult(demoCommand.id());
+            return new Result<>(result);
+        } catch (Exception exception) {
+            return new Result<>(null);
+        }
     }
 }
 """
@@ -133,6 +137,13 @@ class GuardrailTest(unittest.TestCase):
     def test_violations_stop_compile_before_javac(self):
         self.install()
         variants = {
+            "ERR-BOUNDARY-CATCH": APPLICATION.replace("        try {\n", "").replace(
+                "        } catch (Exception exception) {\n            return new Result<>(null);\n        }\n", ""
+            ),
+            "ERR-BOUNDARY-THROWS": APPLICATION.replace(
+                "query(DemoCommand demoCommand) {", "query(DemoCommand demoCommand) throws Exception {"
+            ),
+            "ERR-BOUNDARY-RETHROW": APPLICATION.replace("return new Result<>(null);", "throw exception;"),
             "NAM-APP-PARAM": APPLICATION.replace("demoCommand", "command"),
             "NAM-TYPE-PARAM": APPLICATION.replace("demoCommand", "wrongCommand"),
             "SIG-APP-OUTPUT": APPLICATION.replace("Result<DemoResult>", "Result<DemoCommand>"),
