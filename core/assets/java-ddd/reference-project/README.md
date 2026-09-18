@@ -2,7 +2,7 @@
 
 这是 solo 技能随包携带的代码参考，不是完整生产脚手架，也不是另一份编码规范。当前规则源为 [Java DDD开发规范](../../../references/99%20Java%20DDD开发规范.md)；已有项目的明确约定和用户后续确认的变更优先。solo 0.8 的交付文档按需生成，阶段证据汇总于工作台，各阶段不因代码模板同步而自动完成。
 
-快照版本：1.5。基线来源提交`dad0bd8`及用户确认的后续约束；本轮SRC-043同步四层主入口完整try-catch、禁止throws/重抛、事务提交失败捕获与失败回滚修订，新增失败回归测试；Java规范1.7与三条入口门禁一致。源码/POM/资源/测试/根Checkstyle与当前ddd参考工程逐文件对应，未提交变更如实保留；本说明及.gitignore为快照补充文件。生成有前端的真实业务时按MOD-010创建同级`<项目名>-app`，不为本后端示例建空前端。AI输出归AI/output，运行迁移/测试保留构建位置。
+快照版本：1.6。基线来源提交`dad0bd8`及用户确认的后续约束；SRC-044依据hello-travel质量反馈，将编号业务注释、对象职责和迭代整体复核落实到Java规范1.8。根validate增加scripts/JavaBusinessQuality.java，default业务清单、编号/规模与有限领域结构门禁；补齐DDD异常辅助、实体行为、仓储恢复等遗漏的编号阶段，保留SRC-043四层异常与事务回滚行为。源码/POM/资源/测试/根Checkstyle及业务扫描器与当前ddd参考工程逐文件对应，实际同步94文件；README和.gitignore为快照补充。未提交变更如实保留，静态门禁不证明注释语义、面向对象完整性或生产验收。带前端的业务按MOD-010创建同级-app，AI输出归AI/output，运行资产保留构建位置。
 
 纯依赖装配构造器和构造器注入的依赖字段不写重复注释，业务属性/常量/日志字段仍保留说明，业务行为构造器/公开方法/接口契约仍有中文 Javadoc；Checkstyle 窄范围豁免与 ASCII 英文诊断随包携带。不得把例外扩大为所有构造器免检。
 
@@ -41,3 +41,5 @@ Maven 3 项目版本只在根 POM 的 properties/revision 定义；根 version �
 本快照不包含 .git、.idea、target、.flattened-pom.xml、日志、AI 或 .ai-delivery。业务工程自己的 AI/input、AI/output 与 .ai-delivery 由 solo 流程初始化；本 README 是模板说明，生成真实项目时应另写该项目的 README，不直接复制其相对规范链接。
 
 ddd 是独立的模板调试工程。它的修改经用户确认后才能更新此快照；同步规范/检查配置，更新来源提交及快照版本，并在临时副本验证、重新构建 solo.zip。不能从用户机器的绝对路径动态读取，不能自动把新业务项目代码反写成公共模板。
+
+业务质量门禁：从聚合根执行mvn validate/test；单独生成清单可执行`java scripts/JavaBusinessQuality.java . --report /tmp/quality-method-inventory.csv`。私有辅助和回调也参与扫描；简单getter/纯装配与有业务行为的构造器区别复核。当前76类、141方法含构造器、57多语句流程块，清单只是有限静态证据。

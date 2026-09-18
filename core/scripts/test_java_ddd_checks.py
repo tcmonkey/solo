@@ -38,6 +38,7 @@ public class DemoApplication {
         try {
             // 1. 从命令取得业务标识并创建应用结果。
             DemoResult result = new DemoResult(demoCommand.id());
+            // 2. 将应用结果包装为统一成功响应。
             return new Result<>(result);
         } catch (Exception exception) {
             return new Result<>(null);
@@ -134,6 +135,32 @@ class GuardrailTest(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         self.assertTrue((self.root / "demo-application/target/classes").is_dir())
 
+    def test_business_quality_violations_stop_before_javac(self):
+        self.install()
+        variants = [
+            ("QUALITY-STEPS", APPLICATION.replace(
+                "            // 1. 从命令取得业务标识并创建应用结果.\n", "").replace(
+                "            // 1. 从命令取得业务标识并创建应用结果。\n", "").replace(
+                "            // 2. 将应用结果包装为统一成功响应。\n", "")),
+            ("QUALITY-STEPS", APPLICATION.replace("// 2.", "// 3.")),
+            ("QUALITY-STEPS", APPLICATION.replace(
+                "从命令取得业务标识并创建应用结果。", "prepare result")),
+            ("QUALITY-SIZE", APPLICATION.replace(
+                "    public Result<DemoResult> query", "    private void oversized() {\n"
+                "        // 1. 初始化计数器。\n        int count = 0;\n"
+                + "        count++;\n" * 46
+                + "        // 2. 输出当前计数。\n        System.out.println(count);\n    }\n"
+                "    public Result<DemoResult> query")),
+        ]
+        for marker, variant in variants:
+            with self.subTest(marker=marker):
+                self.write(self.application, variant)
+                result = self.maven("compile")
+                self.assertNotEqual(0, result.returncode, result.stdout + result.stderr)
+                self.assertIn(marker, result.stdout + result.stderr)
+                self.assertFalse((self.root / "demo-application/target/classes").exists())
+        self.write(self.application, APPLICATION)
+
     def test_violations_stop_compile_before_javac(self):
         self.install()
         variants = {
@@ -172,6 +199,37 @@ class GuardrailTest(unittest.TestCase):
                 self.assertIn(marker, output)
                 self.assertFalse((self.root / "demo-application/target/classes").exists())
         self.write(self.application, APPLICATION)
+        result = self.maven("compile")
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+    def test_domain_structure_violations_stop_before_javac(self):
+        self.install()
+        service = self.source + "example/demo/domain/demo/service/DemoDomainService.java"
+        self.write(self.application, APPLICATION.replace(
+            "DemoResult result =",
+            "Object entity = new example.demo.domain.demo.model.entity.DemoEntity();\n"
+            "            DemoResult result =",
+        ))
+        result = self.maven("compile")
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("QUALITY-DOMAIN", result.stdout + result.stderr)
+        self.assertFalse((self.root / "demo-application/target/classes").exists())
+        self.write(self.application, APPLICATION)
+        self.write(service, """package example.demo.domain.demo.service;
+public class DemoDomainService {
+    public void write() {
+        // 1. 取得待保存聚合。
+        DemoAggregate aggregate = load();
+        // 2. 展开实体是需要阻止的结构反例。
+        aggregate.entity();
+    }
+}
+""")
+        result = self.maven("compile")
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("QUALITY-DOMAIN", result.stdout + result.stderr)
+        self.assertFalse((self.root / "demo-application/target/classes").exists())
+        (self.root / service).unlink()
         result = self.maven("compile")
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
 
@@ -227,6 +285,36 @@ public interface DemoRepository {
         self.assertEqual(original, (self.root / "pom.xml").read_bytes())
         self.assertEqual("<user-config/>\n", (self.root / "checkstyle.xml").read_text())
         self.assertFalse((self.root / "AI").exists())
+
+    def test_business_quality_conflicts_preserve_project(self):
+        before = (self.root / "pom.xml").read_bytes()
+        self.write("scripts/JavaBusinessQuality.java", "// project-owned scanner\n")
+        result = subprocess.run(
+            ["python3", str(INSTALLER), "--project", str(self.root)],
+            capture_output=True, text=True, timeout=30,
+        )
+        self.assertNotEqual(0, result.returncode)
+        self.assertEqual(before, (self.root / "pom.xml").read_bytes())
+        self.assertEqual("// project-owned scanner\n",
+                         (self.root / "scripts/JavaBusinessQuality.java").read_text())
+        self.assertFalse((self.root / "checkstyle.xml").exists())
+        (self.root / "scripts/JavaBusinessQuality.java").unlink()
+        existing = before.decode().replace(
+            "        <plugins>",
+            "        <plugins>\n            <plugin>\n"
+            "                <groupId>org.codehaus.mojo</groupId>\n"
+            "                <artifactId>exec-maven-plugin</artifactId>\n"
+            "                <version>3.5.0</version>\n            </plugin>",
+        )
+        self.write("pom.xml", existing)
+        result = subprocess.run(
+            ["python3", str(INSTALLER), "--project", str(self.root)],
+            capture_output=True, text=True, timeout=30,
+        )
+        self.assertNotEqual(0, result.returncode)
+        self.assertEqual(existing, (self.root / "pom.xml").read_text())
+        self.assertFalse((self.root / "checkstyle.xml").exists())
+        self.assertFalse((self.root / "scripts/JavaBusinessQuality.java").exists())
 
     def test_pure_injection_constructors_and_fields_need_no_javadoc(self):
         self.install()

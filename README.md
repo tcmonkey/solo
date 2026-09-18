@@ -261,6 +261,12 @@ Spring 项目中，纯注入构造器（DOC-005）及构造器注入的依赖字
 
 项目经验先记录到该项目的 `AI/output/08 效果评估与复盘.md`。确认应成为公共规则后，再修改 `solo/core/` 并执行安装命令更新使用中的宿主。不要让单个项目自动改写公共模板。
 
-## 最新工程边界约束（2026-09-17）
+## SRC-043历史工程边界修订（2026-09-17）
 
 Java规范1.7：Controller、Application、DomainService及OutAdaptor实现主入口必须各自完整try-catch，禁止向上抛出、throws和catch重抛；事务完成/回滚后才转换结果，提交失败也必须捕获。默认Checkstyle新增ERR-BOUNDARY-CATCH/THROWS/RETHROW，错误语义与事务仍需专项验证。有前端时自动建立同级`<项目名>-app`独立项目；AI设计/接口/数据库说明与证据归AI/output，正式迁移、源码、测试和运行脚本保留构建位置。参考快照1.5同步当前ddd源码与新增失败回归。
+
+## 当前业务代码质量约束（2026-09-18）
+
+Java规范1.8：业务方法含私有辅助、回调按真实职责写中文编号步骤，实体持有初始化/校验/变化规则、聚合提供语义协作；迭代前后检查完整链路，复用职责并清理失效或重复代码。根validate默认执行Checkstyle及scripts/JavaBusinessQuality.java，后者扫描编号、45语句节点阈值与有限领域结构，不能证明注释含义或完整面向对象。独立CR和生产适配仍按流程执行。
+
+参考快照1.6同步94个DDD来源文件、当前扫描器和有限回归。当前规范源为core/references/99 Java DDD开发规范.md，dist三个宿主与portable按同一源构建。

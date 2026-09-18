@@ -20,7 +20,7 @@ def normalized(element: ET.Element):
 
 
 def integrate(pom: str, fragment: str) -> str:
-    """Add an inherited validate/check execution to the root build/plugins."""
+    """Integrate a declared guardrail plugin without overwriting existing configuration."""
     root = ET.fromstring(pom)
     namespace = root.tag.split("}")[0] + "}" if "}" in root.tag else ""
     name = lambda tag: namespace + tag
@@ -32,9 +32,9 @@ def integrate(pom: str, fragment: str) -> str:
     expected = ET.fromstring(fragment)
     if plugins is not None:
         for plugin in plugins.findall(name("plugin")):
-            if plugin.findtext(name("artifactId")) == "maven-checkstyle-plugin":
+            if plugin.findtext(name("artifactId")) == expected.findtext("artifactId"):
                 if normalized(plugin) != normalized(expected):
-                    raise ValueError("Existing Checkstyle plugin differs; reconcile it explicitly without overwriting")
+                    raise ValueError("Existing guardrail plugin differs; reconcile it explicitly without overwriting")
                 return pom
 
     rendered = "\n".join("            " + line for line in fragment.strip().splitlines())
@@ -77,10 +77,12 @@ def main() -> int:
     original = pom_path.read_text(encoding="utf-8")
     try:
         updated = integrate(original, fragment)
+        updated = integrate(updated, (assets / "maven-business-quality-plugin.xml").read_text(encoding="utf-8"))
     except (ValueError, ET.ParseError) as exception:
         raise SystemExit(str(exception)) from exception
 
     files = {
+        project / "scripts/JavaBusinessQuality.java": (assets / "JavaBusinessQuality.java").read_text(encoding="utf-8"),
         project / "checkstyle.xml": (assets / "checkstyle.xml").read_text(encoding="utf-8"),
         project / "AI/output/19 Java DDD开发规范.md":
             (core / "references/99 Java DDD开发规范.md").read_text(encoding="utf-8"),
@@ -97,7 +99,7 @@ def main() -> int:
     if updated != original:
         pom_path.write_text(updated, encoding="utf-8")
     print(f"Java DDD guardrails installed: {project}")
-    print("Run Maven from this aggregation root; validate/compile/test/package enforce Checkstyle")
+    print("Run Maven from this aggregation root; validate/compile/test/package enforce Checkstyle and business quality")
     return 0
 
 

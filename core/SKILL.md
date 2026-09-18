@@ -88,7 +88,7 @@ python3 <skill-dir>/scripts/migrate_project.py --project <project-root>
 
 采用 Java DDD 模板时，阅读 [99 Java DDD开发规范](references/99%20Java%20DDD开发规范.md)。当前规范优先于已被覆盖的历史沟通；保留 C/P/R 自动检查边界，按 DOC-005 区分纯装配与业务构造器注释，按 MAV-007 保持门禁诊断跨宿主可读。开发计划按任务选 assets/java-ddd/reference-project/README.md 中的参考链路，实施时阅读实际文件；不复制所有演示模式、不绑定原 ddd 工程绝对路径。
 
-Java Maven 聚合根建好、正式编码前执行 scripts/install_java_ddd_checks.py --project <project-root>，安装工程自己的 Checkstyle、继承门禁与 19 Java DDD开发规范.md 副本；配置冲突先协调，不覆盖。生产须重新设计真实模型并替换 H2、外部模拟、规则来源和演示配置，不声称示例已生产就绪。
+Java Maven 聚合根建好、正式编码前执行 scripts/install_java_ddd_checks.py --project <project-root>，安装工程自己的 Checkstyle、业务质量扫描、validate门禁与 19 Java DDD开发规范.md 副本；配置冲突先协调，不覆盖。生产须重新设计真实模型并替换 H2、外部模拟、规则来源和演示配置，不声称示例已生产就绪。
 
 生成 Spring 项目时，构造器注入的依赖字段与纯装配构造器不写重复注释；业务状态字段、常量、日志字段、业务构造器和公开接口方法保留必要说明。此默认约定不限于 ddd 示例，细则见开发阶段规范；已有项目明确规范优先。
 
@@ -131,3 +131,5 @@ python3 <skill-dir>/scripts/record_handoff.py \
 AI生成设计、接口/数据库说明、草稿和检查证据归AI/output，输入归AI/input；不默认增加代码根docs/database目录。正式迁移、运行配置、业务源码、测试、构建启动脚本和根README保留实际构建位置，不维护双份DDL。
 
 Controller/输入端口、Application、DomainService、OutAdaptor实现各自主调用入口必须本方法try-catch覆盖组装/调用/转换，捕获业务及未知Exception后返回安全失败；禁止向外抛出、声明throws或catch重抛，不用全局处理器替代。内部不变量/协作可抛异常由本层入口捕获；异步/流式按协议安全失败终止。应用catch须包住事务执行/提交，失败Result明确回滚，不能吞异常提交部分写入。Java细则与门禁范围按99规范ERR-004/006/007、MOD-010、DEL-006。
+
+编码和需求迭代执行FMT-005/DOC-007/DEL-007：先阅读受影响完整链路与对象职责再生成，所有业务方法含私有辅助/回调按真实阶段写编号行内注释；Entity持有状态规则、Aggregate提供语义协作。交付前对照适用C/P/R规则逐方法复核，保存清单和反例证据；不以编译或注释数量代替对象设计，不仅向旧流程追加代码。门禁通过仍说明人工语义复核与未验证边界，维持阶段职责。

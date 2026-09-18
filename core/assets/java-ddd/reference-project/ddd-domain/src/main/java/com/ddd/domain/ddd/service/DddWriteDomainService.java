@@ -63,8 +63,8 @@ public final class DddWriteDomainService {
             Optional<DddOperationEntity> existingOperation =
                     aggregate.findOperation(pendingOperation.operationId());
             DddOperationEntity existing = existingOperation.orElse(null);
+            // 3. 已存在相同操作时返回幂等决策，不再重复写入。
             if (existing != null) {
-                // 3. 已存在相同操作时返回幂等决策，不再重复写入。
                 DddWriteDO result =
                         new DddWriteDO(
                                 existing.operationId().value(),
