@@ -77,7 +77,10 @@ public final class DddWriteDomainService {
 
             // 4. 读取规则并完成待处理操作的确认。
             DddRuleAggregate rule =
-                    dddRuleRepository.getRequiredByRuleCode(pendingOperation.ruleCode());
+                    dddRuleRepository.findByRuleCode(pendingOperation.ruleCode());
+            if (rule == null) {
+                throw new DomainException(DomainErrorCode.DOMAIN_RULE_NOT_FOUND);
+            }
             DddRuleParam ruleParam =
                     new DddRuleParam(
                             pendingOperation.ruleCode(), pendingOperation.baseValue().value());

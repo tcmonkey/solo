@@ -17,6 +17,7 @@ INSTALLER = CORE / "scripts/install_java_ddd_checks.py"
 APPLICATION = """package example.demo.application.demo.service;
 
 import example.demo.application.demo.command.DemoCommand;
+import example.demo.application.demo.assembler.DemoApplicationAssembler;
 import example.demo.application.demo.result.DemoResult;
 import example.demo.common.result.Result;
 
@@ -37,7 +38,7 @@ public class DemoApplication {
     public Result<DemoResult> query(DemoCommand demoCommand) {
         try {
             // 1. 从命令取得业务标识并创建应用结果。
-            DemoResult result = new DemoResult(demoCommand.id());
+            DemoResult result = DemoApplicationAssembler.toResult(demoCommand);
             // 2. 将应用结果包装为统一成功响应。
             return new Result<>(result);
         } catch (Exception exception) {
@@ -102,6 +103,28 @@ class GuardrailTest(unittest.TestCase):
                        + generic + " * @param " + component_name + " 数据内容\n *\n"
                        + " * @author AIGenerator\n */\n"
                        + "public record " + name + "(" + component + ") {\n}\n")
+
+        self.write(self.source + "example/demo/application/demo/assembler/DemoApplicationAssembler.java", """package example.demo.application.demo.assembler;
+import example.demo.application.demo.command.DemoCommand;
+import example.demo.application.demo.result.DemoResult;
+/**
+ * 整体映射独立工程的应用视图。
+ *
+ * @author AIGenerator
+ */
+public final class DemoApplicationAssembler {
+    /**
+     * 投影完整命令快照。
+     *
+     * @param command 命令快照
+     * @return 应用结果
+     * @author AIGenerator
+     */
+    public static DemoResult toResult(DemoCommand command) {
+        return new DemoResult(command.id());
+    }
+}
+""")
 
     def write(self, name, content):
         target = self.root / name
@@ -230,6 +253,29 @@ public class DemoDomainService {
         self.assertIn("QUALITY-DOMAIN", result.stdout + result.stderr)
         self.assertFalse((self.root / "demo-application/target/classes").exists())
         (self.root / service).unlink()
+        result = self.maven("compile")
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+    def test_mapping_and_exception_ownership_stop_before_compilation(self):
+        self.install()
+        mapping = APPLICATION.replace(
+            "DemoApplicationAssembler.toResult(demoCommand)",
+            "new DemoResult(demoCommand.id())",
+        )
+        ownership = APPLICATION.replace(
+            "DemoResult result =",
+            "Object error = new example.demo.domain.exception.DomainException(null);\n"
+            "            DemoResult result =",
+        )
+        for marker, source in [("QUALITY-MAPPING", mapping),
+                               ("QUALITY-ERROR-OWNER", ownership)]:
+            with self.subTest(rule=marker):
+                self.write(self.application, source)
+                result = self.maven("compile")
+                self.assertNotEqual(0, result.returncode, result.stdout + result.stderr)
+                self.assertIn(marker, result.stdout + result.stderr)
+                self.assertFalse((self.root / "demo-application/target/classes").exists())
+        self.write(self.application, APPLICATION)
         result = self.maven("compile")
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
 

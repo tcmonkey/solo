@@ -153,6 +153,36 @@ public final class JavaBusinessQuality {
                                     "application flow must use aggregate creation/state methods,"
                                             + " not construct Entity fields");
                         }
+                        // 映射按源码包职责检查，内部标准Result及领域自己的DO不受限制。
+                        String packageName = unit.getPackageName().toString();
+                        String type = creation.getIdentifier().toString().replaceAll("<.*>", "");
+                        boolean assembler = packageName.matches(".*\\.assembler(\\..*)?");
+                        boolean converter = packageName.matches(".*\\.converter(\\..*)?");
+                        boolean misplacedMapping =
+                                (!assembler && packageName.contains(".application.")
+                                        && type.matches(".+(Command|Param|Result)"))
+                                || (!assembler && packageName.contains(".adaptor.http.")
+                                        && type.matches(".+(Command|Response)"))
+                                || (!converter && packageName.contains(".adaptor.")
+                                        && packageName.contains(".output")
+                                        && type.matches(".+DO"));
+                        if (misplacedMapping) {
+                            fail("QUALITY-MAPPING",
+                                    unit.getLineMap().getLineNumber(
+                                            positions.getStartPosition(unit, creation)),
+                                    "construct mapped DTO in its layer assembler/converter; "
+                                            + "pass complete source objects to purpose-specific methods");
+                        }
+                        // 层内创建本层异常；下层已分类异常由公共BaseException保留。
+                        for (String owner : List.of("Domain", "Application", "Infrastructure", "Adaptor")) {
+                            if (type.endsWith(owner + "Exception")
+                                    && !packageName.contains("." + owner.toLowerCase(Locale.ROOT) + ".")) {
+                                fail("QUALITY-ERROR-OWNER",
+                                        unit.getLineMap().getLineNumber(
+                                                positions.getStartPosition(unit, creation)),
+                                        "create the current module exception instead of " + type);
+                            }
+                        }
                         return super.visitNewClass(creation, ignored);
                     }
 
