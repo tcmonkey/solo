@@ -82,6 +82,34 @@ public final class JavaBusinessQuality {
                             Collections.newSetFromMap(new IdentityHashMap<>());
 
                     @Override
+                    public Void visitClass(ClassTree type, Void ignored) {
+                        String packageName = unit.getPackageName().toString();
+                        String typeName = type.getSimpleName().toString();
+                        boolean inputAdapter =
+                                packageName.matches(".*\\.adaptor\\..+\\.input(\\..*)?");
+                        boolean misplacedController =
+                                inputAdapter
+                                        && typeName.endsWith("Controller")
+                                        && !packageName.matches(
+                                                ".*\\.input\\.controller(\\..*)?");
+                        boolean misplacedAssembler =
+                                inputAdapter
+                                        && typeName.endsWith("Assembler")
+                                        && !packageName.matches(
+                                                ".*\\.input\\.assembler(\\..*)?");
+                        if (misplacedController || misplacedAssembler) {
+                            fail(
+                                    "QUALITY-PACKAGE",
+                                    unit.getLineMap()
+                                            .getLineNumber(
+                                                    positions.getStartPosition(unit, type)),
+                                    "input Controller and Assembler must use sibling"
+                                            + " input.controller/input.assembler packages");
+                        }
+                        return super.visitClass(type, ignored);
+                    }
+
+                    @Override
                     public Void visitMethod(MethodTree method, Void ignored) {
                         if (method.getBody() == null) return null;
                         methods++;
@@ -156,12 +184,22 @@ public final class JavaBusinessQuality {
                         // 映射按源码包职责检查，内部标准Result及领域自己的DO不受限制。
                         String packageName = unit.getPackageName().toString();
                         String type = creation.getIdentifier().toString().replaceAll("<.*>", "");
-                        boolean assembler = packageName.matches(".*\\.assembler(\\..*)?");
-                        boolean converter = packageName.matches(".*\\.converter(\\..*)?");
+                        boolean assembler =
+                                packageName.matches(".*\\.assembler(\\..*)?")
+                                        || path.getFileName()
+                                                .toString()
+                                                .endsWith("Assembler.java");
+                        boolean converter =
+                                packageName.matches(".*\\.converter(\\..*)?")
+                                        || path.getFileName()
+                                                .toString()
+                                                .endsWith("Converter.java");
                         boolean misplacedMapping =
                                 (!assembler && packageName.contains(".application.")
                                         && type.matches(".+(Command|Param|Result)"))
-                                || (!assembler && packageName.contains(".adaptor.http.")
+                                || (!assembler
+                                        && packageName.matches(
+                                                ".*\\.adaptor\\..+\\.input(\\..*)?")
                                         && type.matches(".+(Command|Response)"))
                                 || (!converter && packageName.contains(".adaptor.")
                                         && packageName.contains(".output")

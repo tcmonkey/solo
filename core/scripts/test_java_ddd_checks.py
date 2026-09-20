@@ -279,6 +279,29 @@ public class DemoDomainService {
         result = self.maven("compile")
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
 
+    def test_input_controller_and_assembler_require_sibling_packages(self):
+        self.install()
+        variants = {
+            "DemoController.java": """package example.demo.adaptor.demo.input;
+public final class DemoController {}
+""",
+            "DemoInputAssembler.java": """package example.demo.adaptor.demo.input;
+public final class DemoInputAssembler {}
+""",
+        }
+        for name, source in variants.items():
+            with self.subTest(source=name):
+                path = self.source + "example/demo/adaptor/demo/input/" + name
+                self.write(path, source)
+                result = self.maven("compile")
+                output = result.stdout + result.stderr
+                self.assertNotEqual(0, result.returncode, output)
+                self.assertIn("QUALITY-PACKAGE", output)
+                self.assertFalse((self.root / "demo-application/target/classes").exists())
+                (self.root / path).unlink()
+        result = self.maven("compile")
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
     def test_implicit_public_interface_javadoc_is_enforced(self):
         self.install()
         name = self.source + "example/demo/common/api/DemoRepository.java"

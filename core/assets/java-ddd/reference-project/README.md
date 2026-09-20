@@ -2,7 +2,7 @@
 
 这是 solo 技能随包携带的代码参考，不是完整生产脚手架，也不是另一份编码规范。当前规则源为 [Java DDD开发规范](../../../references/99%20Java%20DDD开发规范.md)；已有项目的明确约定和用户后续确认的变更优先。solo 0.8 的交付文档按需生成，阶段证据汇总于工作台，各阶段不因代码模板同步而自动完成。
 
-快照版本：1.8。基线来源提交`dad0bd8`及用户授权的后续约束；当前同步Java规范1.10、QUALITY-MAPPING/QUALITY-ERROR-OWNER门禁，以及规则缺失判断从仓储移回领域，公开失败码保持DOMAIN_RULE_NOT_FOUND。本次仅整理规范与参考说明的适用范围，Java源码和门禁未变化；来源文件对应参考工程基线，静态扫描不证明映射语义、完整对象设计或生产验收。
+快照版本：1.13。基线来源提交`dad0bd8`及用户授权的后续约束；当前同步Java规范1.17及QUALITY-PACKAGE/MAPPING/ERROR-OWNER门禁，输入适配层使用同级`input.controller`和`input.assembler`子包，规则缺失判断仍由领域负责，公开失败码保持DOMAIN_RULE_NOT_FOUND。无参数标记注解使用@Component等无括号形式，依赖字段之间不留空行，字段组与构造方法之间一行空行；来源文件对应参考工程基线，静态扫描不证明映射语义、完整对象设计或生产验收。
 
 纯依赖装配构造器和构造器注入的依赖字段不写重复注释，业务属性/常量/日志字段仍保留说明，业务行为构造器/公开方法/接口契约仍有中文 Javadoc；Checkstyle 窄范围豁免与 ASCII 英文诊断随包携带。不得把例外扩大为所有构造器免检。
 
@@ -11,6 +11,8 @@
 根 Maven 聚合工程包含 common、client、model、domain、application、infrastructure、adaptor、start 八个 ddd-* module。真实业务使用项目名作为 module 前缀，使用领域语言替换 Ddd 类名和 com.ddd 包名；不要把层级折叠为单个 src 下的目录。
 
 start 的 POM 是本服务的显式装配清单：完整模板直接列出其余七个运行模块，依赖版本仍由根 POM 管理。真实业务按服务边界裁剪，不引入无用途、其他服务或仅工具用途的模块；测试专用依赖使用 test scope。清单声明不代表 start 承载业务逻辑，也不允许业务模块反向依赖 start。
+
+这些五条链路属于同一个占位示例业务，用于展示该业务内可采用的五种处理模式；不是为全项目各建一个汇总写/读/计算服务。`DddWriteDomainService`、`DddReadApplication`等名称只标记本参考工程中的教学路径，不能作为真实领域服务的命名模板。真实项目先划分业务，再以业务职责命名对象，并在各业务中按需选用模式与本域服务；跨域流程由应用层协调。源码仅补充参考类职责说明，执行逻辑未变化。
 
 所有链路共同参考 ddd-adaptor 的 DddController/DddInputAssembler 与 ddd-application 的 DddApplicationAssembler，关注 Request→Command→Param、DO→Application Result→Response 的分层转换。
 
