@@ -133,6 +133,25 @@ public final class JavaBusinessQuality {
                                                 + MAX_STATEMENTS
                                                 + ")");
                         }
+                        boolean scheduled =
+                                method.getModifiers().getAnnotations().stream()
+                                        .anyMatch(
+                                                annotation ->
+                                                        annotation
+                                                                .getAnnotationType()
+                                                                .toString()
+                                                                .endsWith("Scheduled"));
+                        if (scheduled
+                                && (!unit.getPackageName().toString().contains(".adaptor.")
+                                        || !unit.getPackageName()
+                                                .toString()
+                                                .contains(".scheduler"))) {
+                            fail(
+                                    "QUALITY-SCHEDULER-BOUNDARY",
+                                    line,
+                                    "@Scheduled methods must stay in an adaptor business scheduler;"
+                                            + " application services expose callable business actions");
+                        }
                         // 构造器的纯装配/值复制不凑业务步骤，复杂构造器仍在设计复核清单。
                         super.visitMethod(method, ignored);
                         rows.add(

@@ -8,7 +8,7 @@
 
 当前维护以上三个编码宿主。其他宿主后续按需求适配；通用 `dist/portable/solo.zip` 仅作为分发资源，不代表已验证兼容。普通聊天模式降级入口已移除。
 
-首次安装及后续更新使用同一命令：`python3 /Users/monkey/Documents/kit/workspace/solo/installers/install.py --platform all`。它从 core 与平台配置构建完整产物，再同步个人技能目录；修改 core 后需要重新运行。Codex 使用一层目录链接，其他两个宿主默认真实副本；不再维护 adapters 下的公共资源链接外壳。
+首次安装及后续更新使用同一命令：`python3 /Users/monkey/Documents/kit/workspace/solo/installers/install.py --platform all`。`core/`是唯一可编辑的公共技能源；`dist/`与`~/.agents/skills/solo`、`~/.claude/skills/solo`、`~/.qwen/skills/solo`都是生成或安装产物，不能直接编辑。每次技能演进只修改core和按需的adapters，再运行该命令重建并同步全部宿主。Codex 使用一层目录链接，其他两个宿主默认真实副本；不再维护 adapters 下的公共资源链接外壳。
 
 裸调用先介绍完整步骤和简易/平衡/完整模式；只问未知的项目目录和需求/附件，不强制选择终点。已有项目展示真实进度和下一步。目标明确后默认guided，从需求范围确认开始，不直接编码。
 

@@ -2,7 +2,7 @@
 
 这是 solo 技能随包携带的代码参考，不是完整生产脚手架，也不是另一份编码规范。当前规则源为 [Java DDD开发规范](../../../references/99%20Java%20DDD开发规范.md)；已有项目的明确约定和用户后续确认的变更优先。solo 0.8 的交付文档按需生成，阶段证据汇总于工作台，各阶段不因代码模板同步而自动完成。
 
-快照版本：1.13。基线来源提交`dad0bd8`及用户授权的后续约束；当前同步Java规范1.17及QUALITY-PACKAGE/MAPPING/ERROR-OWNER门禁，输入适配层使用同级`input.controller`和`input.assembler`子包，规则缺失判断仍由领域负责，公开失败码保持DOMAIN_RULE_NOT_FOUND。无参数标记注解使用@Component等无括号形式，依赖字段之间不留空行，字段组与构造方法之间一行空行；来源文件对应参考工程基线，静态扫描不证明映射语义、完整对象设计或生产验收。
+快照版本：1.14。基线来源提交`dad0bd8`及用户授权的后续约束；当前同步Java规范1.18及QUALITY-PACKAGE/MAPPING/ERROR-OWNER/SCHEDULER-BOUNDARY门禁，输入适配层使用同级`input.controller`和`input.assembler`子包，调度入口归业务输入适配器，规则缺失判断仍由领域负责，公开失败码保持DOMAIN_RULE_NOT_FOUND。无参数标记注解使用@Component等无括号形式，依赖字段之间不留空行，字段组与构造方法之间一行空行；来源文件对应参考工程基线，静态扫描不证明映射语义、完整对象设计或生产验收。
 
 纯依赖装配构造器和构造器注入的依赖字段不写重复注释，业务属性/常量/日志字段仍保留说明，业务行为构造器/公开方法/接口契约仍有中文 Javadoc；Checkstyle 窄范围豁免与 ASCII 英文诊断随包携带。不得把例外扩大为所有构造器免检。
 

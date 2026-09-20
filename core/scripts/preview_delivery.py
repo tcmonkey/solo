@@ -101,8 +101,8 @@ def describe(data: dict) -> str:
         lines.append("\n先提供：" + "、".join(names[key] for key in data["missing_inputs"]) + "。")
         lines.append("模式和终点都可不填，我会理解需求后推荐；先确认需求范围，不直接编码。")
         lines.append("可选成果：" + " / ".join(item["label"] for item in data["goal_options"]) + "。")
-        example = (["项目：itineary"] if "project" in data["missing_inputs"] else [])
-        example += (["需求：增加行程复制功能（也可提供附件）"] if "requirement" in data["missing_inputs"] else [])
+        example = (["项目：业务服务目录"] if "project" in data["missing_inputs"] else [])
+        example += (["需求：增加一项业务能力（也可提供附件）"] if "requirement" in data["missing_inputs"] else [])
         lines.append("最短回复示例：" + "；".join(example))
     else:
         provisional = "（暂定，待需求风险评估）" if data.get("mode_is_provisional") else ""

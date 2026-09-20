@@ -302,6 +302,30 @@ public final class DemoInputAssembler {}
         result = self.maven("compile")
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
 
+    def test_scheduled_method_requires_business_input_scheduler(self):
+        self.install()
+        source = """package example.demo.application.demo;
+public final class DemoScheduledApplication {
+    @org.springframework.scheduling.annotation.Scheduled(fixedDelay = 1)
+    public void dispatch() {
+        // 1. 触发应用业务动作。
+        int attempts = 1;
+        // 2. 保留本轮触发结果。
+        System.out.println(attempts);
+    }
+}
+"""
+        path = self.source + "example/demo/application/demo/DemoScheduledApplication.java"
+        self.write(path, source)
+        result = self.maven("compile")
+        output = result.stdout + result.stderr
+        self.assertNotEqual(0, result.returncode, output)
+        self.assertIn("QUALITY-SCHEDULER-BOUNDARY", output)
+        self.assertFalse((self.root / "demo-application/target/classes").exists())
+        (self.root / path).unlink()
+        result = self.maven("compile")
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
     def test_implicit_public_interface_javadoc_is_enforced(self):
         self.install()
         name = self.source + "example/demo/common/api/DemoRepository.java"

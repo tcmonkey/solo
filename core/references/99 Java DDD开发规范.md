@@ -1,6 +1,6 @@
 # Java DDD 开发规范
 
-版本：1.17。作为 solo 的 Java DDD 默认开发约定，适用于采用 Java/Spring/Maven 与 DDD 分层的项目，不绑定具体业务应用。`ddd` 是随技能提供的参考工程，不是适用项目名单；其他技术栈按其实际架构采用相关通用原则。已有项目的明确规范和用户决定优先，本文件不宣称是行业统一标准。
+版本：1.18。作为 solo 的 Java DDD 默认开发约定，适用于采用 Java/Spring/Maven 与 DDD 分层的项目，不绑定具体业务应用。`ddd` 是随技能提供的参考工程，不是适用项目名单；其他技术栈按其实际架构采用相关通用原则。已有项目的明确规范和用户决定优先，本文件不宣称是行业统一标准。
 
 ## 1. 使用方式与规则优先级
 
@@ -25,6 +25,7 @@
 | MOD-008 | 同一 adaptor module 区分 input/output。每个业务的 input 下必须建立同级 `controller` 与 `assembler` 子包：协议入口只放 `input.controller`，输入双向转换只放 `input.assembler`，禁止将 Controller 或 Assembler 直接平铺在 input 根包；listener、scheduler 等按真实职责建立同级子包。output 放外部能力实现、converter 和私有第三方模型。 | P：QUALITY-PACKAGE 检查输入类后缀与包位置；协议职责仍需评审 |
 | MOD-010 | 生成有前端的项目时，默认以用户项目名为服务端目录，自动创建同级`<项目名>-app`为独立前端项目，拥有自己的package.json、lockfile、源码、构建与README；禁止默认嵌套到服务端frontend/web目录。用户明确其他布局或已有仓库约定优先；目标已存在先检查保留，不覆盖。同步启动脚本、代理、文档和项目目录引用；不把服务端凭据复制到前端。 | R：目录与独立构建验证 |
 | MOD-009 | start 的 POM 是本服务的显式装配清单，直接声明实际随服务运行的内部模块，不仅依靠传递依赖。完整模板列出 common、client、model、domain、application、infrastructure、adaptor；真实项目按服务边界裁剪，不引入无用途、其他服务或仅工具用途的模块。测试专用依赖使用 test scope，运行专用依赖按需使用 runtime scope；所有依赖版本仍由根 POM 管理。业务模块不得反向依赖 start。 | R：核对 POM、有效依赖树和运行验证，Checkstyle 不检查 |
+| MOD-011 | `util`仅在存在跨业务、跨层复用的无状态技术操作时建立，可被业务模块内部依赖；只包含格式、编码、序列化等技术工具，不包含业务路由、领域规则、持久化访问、Spring组件生命周期或跨域编排。无真实复用不建util module或工具包。 | R：核对依赖方向、调用者与工具语义 |
 
 按业务子域组织包，推荐骨架：
 
@@ -82,7 +83,19 @@ start        Application / config / resources / 按需 aop
 | DDD-012 | 真实业务的DomainService以业务职责命名，例如`AuthDomainService`；写入、读取、规则或计算等模式由用例、公开动作和Param表达，不以`Write`、`Read`或`Calculate`后缀替代领域身份。参考工程中带模式词的类名只用于标示教学链路。若同一领域存在多个服务，名称应区分实际职责，而非仅复述处理模式。 | R：对象名、职责、调用链和未来扩展反例复核 |
 | DDD-013 | `workflow`只用于有明确状态节点、转移、恢复或补偿语义的SOP/状态图。协议中的`action`选择必须由Application入口后的受控策略/注册表分派到命名明确的用例，未知动作拒绝；不得以泛化`Flow`/`Workflow`类承载动作`switch`，也不得为掩盖集中逻辑只增加空转发类。共享协作仅保留可复用校验、访问或基础设施边界，具体动作仍有可审阅的职责归属。 | R：检查动作映射、具体用例、状态图证据和扩展新动作反例 |
 
-| DDD-014 | AI、邮件、文件、安全、向量等技术能力先按用户任务确定业务所有者，再在所属业务内定义用途明确的端口与适配器；不得建立与业务域平级的`model`、`mail`、`file`、`security`等技术总包，也不得用动态`action`的万能模型端口混合问答、意图、记忆、嵌入等不同契约。框架高阶能力、命名模型、流式与降级装配归adaptor/start，Application只依赖业务语义端口；共享内部DO仍按MOD-005归具体业务包。 | R：从用户任务反推端口所有者，核对包树、命令/结果语义、装配位置、流式/治理能力和新增能力扩展反例 |
+| DDD-014 | AI、邮件、文件、安全、向量等技术能力先按用户任务确定业务所有者，再在所属业务内定义用途明确的端口与适配器；不得建立与业务域平级的`model`、`mail`、`file`、`security`等技术总包，也不得用动态`action`的万能模型端口混合问答、意图、记忆、嵌入等不同契约。共享内部DO仍按MOD-005归具体业务包。 | R：从用户任务反推端口所有者，核对包树、命令/结果语义、装配位置、流式/治理能力和新增能力扩展反例 |
+| DDD-015 | 一个Application Service只承载一个可从类名理解的业务动作，动作逻辑直接沉淀在该服务中；禁止以`Write`、`Operations`、`Actions`、`UseCase`、`Repositories`等泛化名称聚合多个动作或仅作转发。多动作协议通过受控策略/注册表分派到具体服务；共享协作只在确有独立职责时抽取。 | R：核对类名、公开动作、依赖和新增动作反例 |
+| DDD-016 | `@Scheduled`是时间输入协议，只能位于`adaptor/<业务>/input/scheduler`等业务输入适配器包。调度器只触发Application的可调用业务动作并处理本轮边界失败，不直接访问Repository、DomainService或第三方SDK；Application不得带`@Scheduled`。Controller只处理HTTP/RPC/SSE协议，连接推送状态与定时触发分离。 | P：QUALITY-SCHEDULER-BOUNDARY检查注解包归属；职责与失败策略仍需R |
+
+### 4.1 AI业务编排与框架隔离
+
+| ID | 生效规则 | 检查 |
+|---|---|---|
+| AI-001 | Application的`<业务>.adaptor`声明面向业务的外部能力契约，Command、Result和中间模型表达业务含义，不暴露模型厂商、LangChain4j、LangGraph4j、向量SDK或传输对象。OutAdaptor在所属业务的output实现该契约；更换AI平台或框架只替换实现和装配，不改变领域规则与业务调用链。 | R：核对公开类型、依赖图和替换实现反例 |
+| AI-002 | LangChain4j的`@AiService`、提示词、流式模型、嵌入、重试、降级和供应商装配归所属业务的adaptor output与start；Application不得直接调用供应商SDK。模型能力按意图识别、普通对话、结构化生成、检索等不同契约拆分，不以万能模型端口混合。 | R：核对框架依赖、提示词/模型装配与端口语义 |
+| AI-003 | 有真实多步骤业务状态、校验和路由需求时，Application可使用Graph框架编排业务节点。Node只协调步骤和最小状态：外部调用走OutAdaptor，内部数据走Repository，确定性不变量与计算走DomainService；OutAdaptor不得调用Domain。普通单次对话或少量明确分支由Application直接路由，不为使用Graph而制造节点。 | R：核对节点职责、状态最小化、循环/重试上界、失败与降级路径 |
+| AI-004 | RAG同时使用关系库与向量库时，关系库保存文档、版本、解析状态、分块元数据、哈希、权限、生命周期与向量引用；向量库保存embedding及检索索引。两者表/collection、删除重建、来源引用和一致性策略必须在方案中分别标明。未核验的检索或外部事实必须带来源与待核验语义，不能被模型表述为确定事实。 | R：方案、数据模型、删除/重建和召回失败反例 |
+| AI-005 | 对话、短期记忆、长期记忆、上下文预算、模型调用证据和同步事件按业务身份与会话隔离。图框架只保存最小化、可序列化且不含敏感业务对象的运行状态；跨进程恢复、检查点、幂等重放与未知模型调用结果须由方案明确，不能由本地内存实现暗示已具备。 | R：隔离、重放、进程中断和敏感信息反例 |
 
 ## 5. 仓储与数据访问
 
@@ -152,7 +165,7 @@ start        Application / config / resources / 按需 aop
 
 ### DOC-007 业务质量扫描与语义复核
 
-Java DDD项目在根validate阶段默认执行scripts/JavaBusinessQuality.java（JDK17源码启动，exec-maven-plugin），与Checkstyle各自承担不同检查。扫描所有模块src/main/java，列出公开/私有方法、构造器及流程分类；有至少两个直接语句的主流程、try或块式lambda须有至少两个非空中文职责编号且连续。纯单操作/getter和纯装配不凑编号；有业务行为的构造器、复杂单语句链、catch/finally以及条件/循环内部的语义覆盖仍须复核。测试、生成目录和脚本不作为业务源码扫描。
+Java DDD项目在根validate阶段默认执行scripts/JavaBusinessQuality.java（JDK17源码启动，exec-maven-plugin），与Checkstyle各自承担不同检查。扫描所有模块src/main/java，列出公开/私有方法、构造器及流程分类；有至少两个直接语句的主流程、try或块式lambda须有至少两个非空中文职责编号且连续。纯单操作/getter和纯装配不凑编号；有业务行为的构造器、复杂单语句链、catch/finally以及条件/循环内部的语义覆盖仍须复核。扫描同时阻止`@Scheduled`落在非adaptor业务scheduler包。测试、生成目录和脚本不作为业务源码扫描。
 
 默认单业务方法不超过45个AST语句节点（含嵌套流程），超限以QUALITY-SIZE阻止构建；拆分依据业务职责，不以绕过计数为目标。编号缺失/不连续报QUALITY-STEPS，DDD-003/004的有限结构特征报QUALITY-DOMAIN；解析失败阻止交付。可执行`java scripts/JavaBusinessQuality.java . --report AI/output/docs/verification/quality-method-inventory.csv`保存逐方法清单。清单必须包含未自动覆盖类别的复核记录，语义复核指出所负责对象、约束、事务/错误与适用的反例；自动扫描不证明全部注释正确或面向对象设计成立。
 
@@ -236,6 +249,11 @@ Checkstyle 实现采用包结构/注解和单文件 AST，不做 Java 类型解�
 | 子模块固定 parent 版本 / 单点版本 | 根 revision + 子模块 ${revision}；Maven 3 使用 Flatten 适配发布 | MAV-005/006 |
 | 默认估工时 / 当事人排期 | 默认不生成人天/工时或合计工期；显式估算请求需依据与不确定性 | DEL-005 |
 | 局部表结构检查 / 整份方案生成后推演 | 主动贯穿整个技术方案的实际风险，回改矛盾并区分推理、实验和待验证 | DEL-004 |
+| 按技术名横向分包 / 先确定业务所有者 | 技术能力归属业务域，跨层技术工具仅按需抽取 | DDD-014/MOD-011 |
+| 一个泛化应用服务 / 每个动作一个服务 | 具体动作直接归具体Application Service，多动作请求受控分派 | DDD-013/015 |
+| 模型框架侵入业务 / 业务语义端口隔离 | Application声明业务契约，框架实现留在输出适配器和启动装配 | AI-001/002 |
+| Graph写在外部适配器 / Application业务编排 | 图节点在Application协调外部、内部与领域协作 | AI-003 |
+| Application定时触发 / 业务输入调度器 | `@Scheduled`仅在adaptor业务scheduler，应用层公开可调用动作 | DDD-016 |
 
 不把历史版本日志中的旧选择当作新项目规则。规则变更更新本文件版本、受影响的安装资源/项目文档及快照说明；影响自动检查或源码时同步对应 checkstyle.xml/代码并验证正向构建与反向违规用例。仅R级交付文档规则修改时验证文档与发行包一致性、相关流程回归，不虚构门禁覆盖或重复宣称Java运行验证。
 
@@ -256,3 +274,5 @@ Checkstyle 实现采用包结构/注解和单文件 AST，不做 Java 类型解�
 1.13：明确先业务领域、后域内用例模式；禁止将无关业务的写/读/计算集中到全局领域服务或应用路由。跨域协调归应用层，参考模式不规定服务数量。
 
 1.14：真实业务领域服务按业务职责命名，模式通过用例和动作表达；参考工程的模式词仅标识教学链路，不能外推为真实项目的类名后缀。
+
+1.18：新增业务域内技术归属、单动作Application Service、调度输入边界与AI业务编排规则。模型框架通过业务语义端口隔离；Graph在Application协调节点，RAG关系/向量存储及会话隔离按实际业务方案验证。公共规则不使用促成改进的项目、表、节点或供应商名称。
