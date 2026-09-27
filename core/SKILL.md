@@ -1,6 +1,12 @@
 ---
 name: solo
+display_name: Solo
+display_name_en: Solo
 description: "引导一名开发者基于文本、图片、文件和在线资料，按需完成需求、产品、可选 UI、技术与计划、编码、自测、CR、独立测试、发布准备、初始发布、观测、放量、完整发布确认及效果评估。用于开始、继续或修改端到端软件项目交付，持久记录决策和证据，支持编码宿主顺序交接；孤立的编码问答不自动使用。"
+description_zh: "面向一人开发的需求、方案、开发、验证与发布交付流程。"
+description_en: "A solo software-delivery workflow for requirements, design, implementation, validation, and release readiness."
+version: 0.8.0
+author: Solo
 ---
 
 # solo 一人全栈交付

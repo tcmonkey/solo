@@ -13,6 +13,7 @@ from build_distributions import MARKER, PLATFORMS, ROOT, build, materialize, sou
 
 TARGETS = {"claude-code": Path(".claude/skills/solo"), "qwen-code": Path(".qwen/skills/solo")}
 CODEX_TARGETS = {"agents": Path(".agents/skills/solo"), "codex": Path(".codex/skills/solo")}
+LOCAL_INSTALL_PLATFORMS = ("codex", "claude-code", "qwen-code")
 
 
 def owned_link(target: Path, root: Path, platform: str) -> bool:
@@ -27,6 +28,8 @@ def owned_link(target: Path, root: Path, platform: str) -> bool:
 
 
 def target_for(platform: str, home: Path, codex_location: str) -> Path:
+    if platform == "workbuddy":
+        raise ValueError("WorkBuddy uses the generated import ZIP instead of a local skill directory")
     if platform != "codex":
         return home / TARGETS[platform]
     # 自动模式统一使用官方用户级目录，不再根据 .codex 是否存在选择旧目录。
@@ -55,6 +58,19 @@ def cleanup_old_links(platform: str, home: Path, selected: Path, root: Path, dry
 
 def install(platform: str, home: Path, root: Path = ROOT, dry_run: bool = False,
             codex_location: str = "auto", install_mode: str = "auto") -> bool:
+    if platform == "workbuddy":
+        source = root / "dist/workbuddy/solo"
+        archive = root / "dist/workbuddy/solo-workbuddy.zip"
+        try:
+            if not dry_run:
+                validate_managed(source, root, platform)
+                if not archive.is_file() or archive.is_symlink():
+                    raise ValueError(f"Missing WorkBuddy import package: {archive}")
+            print(f"[workbuddy] {'plan export' if dry_run else 'import package ready'}: {archive}")
+        except (OSError, ValueError) as error:
+            print(f"[workbuddy] conflict/error: {error}")
+            return False
+        return True
     target = target_for(platform, home, codex_location)
     source = root / "dist" / platform / "solo"
     mode = ("symlink" if platform == "codex" else "copy") if install_mode == "auto" else install_mode
@@ -107,7 +123,8 @@ def main() -> int:
         eligible = []
         for platform in platforms:
             try:
-                check_target(target_for(platform, home, args.codex_location), ROOT, platform)
+                if platform in LOCAL_INSTALL_PLATFORMS:
+                    check_target(target_for(platform, home, args.codex_location), ROOT, platform)
                 eligible.append(platform)
             except (OSError, ValueError) as error:
                 print(f"[{platform}] conflict/error: {error}")

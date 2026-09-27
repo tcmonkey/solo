@@ -13,7 +13,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
-PLATFORMS = ("codex", "claude-code", "qwen-code")
+PLATFORMS = ("codex", "claude-code", "qwen-code", "workbuddy")
 MARKER = ".solo-generated.json"
 GENERATOR = "solo/installers"
 EXCLUDED = {"__pycache__", ".git", ".idea", "target", ".DS_Store", ".flattened-pom.xml"}
@@ -134,6 +134,20 @@ def build_zip(destination: Path, files: dict[str, Path]) -> None:
         archive_path.replace(destination)
 
 
+def build_workbuddy_zip(destination: Path, files: dict[str, Path]) -> None:
+    """生成 WorkBuddy 可直接导入的包，入口 SKILL.md 必须位于 ZIP 根目录。"""
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=".solo-workbuddy-zip-", dir=destination.parent) as staging:
+        archive_path = Path(staging) / "solo-workbuddy.zip"
+        with zipfile.ZipFile(archive_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            for relative, path in files.items():
+                info = zipfile.ZipInfo(relative, date_time=(1980, 1, 1, 0, 0, 0))
+                info.compress_type = zipfile.ZIP_DEFLATED
+                info.external_attr = (0o755 if relative.startswith("scripts/") else 0o644) << 16
+                archive.writestr(info, path.read_bytes())
+        archive_path.replace(destination)
+
+
 def build(output: Path, root: Path = ROOT) -> dict:
     output = output.expanduser().resolve()
     core = (root / "core").resolve()
@@ -158,9 +172,14 @@ def build(output: Path, root: Path = ROOT) -> dict:
         entries[platform] = {"path": str(destination.relative_to(output)), "files": fingerprints(destination)}
     portable = output / "portable/solo.zip"
     build_zip(portable, source_files(root / "core"))
+    workbuddy = output / "workbuddy/solo-workbuddy.zip"
+    build_workbuddy_zip(workbuddy, source_files(root / "core"))
     manifest = {
         "version": json.loads((core / "assets/state.json").read_text(encoding="utf-8"))["template_version"],
-        "artifacts": {str(portable.relative_to(output)): checksum(portable)},
+        "artifacts": {
+            str(portable.relative_to(output)): checksum(portable),
+            str(workbuddy.relative_to(output)): checksum(workbuddy),
+        },
         "skills": entries,
     }
     (output / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

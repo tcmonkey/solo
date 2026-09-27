@@ -12,7 +12,13 @@ target/
 ### NetBeans ###
 /nbproject/private/
 /nbbuild/
-/dist/
+/dist/*
+!/dist/manifest.json
+!/dist/portable/
+!/dist/portable/solo.zip
+!/dist/workbuddy/
+/dist/workbuddy/*
+!/dist/workbuddy/solo-workbuddy.zip
 # Python 运行缓存不属于技能资源。
 __pycache__/
 *.pyc

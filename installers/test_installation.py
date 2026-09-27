@@ -14,7 +14,7 @@ from pathlib import Path
 from unittest import mock
 
 from build_distributions import MARKER, PLATFORMS, ROOT, build, checksum, fingerprints, source_files
-from install import install, target_for
+from install import LOCAL_INSTALL_PLATFORMS, install, target_for
 
 
 class InstallationTest(unittest.TestCase):
@@ -61,6 +61,20 @@ class InstallationTest(unittest.TestCase):
                 self.assertEqual(archive.read("solo/" + name), path.read_bytes())
         self.assertEqual(first["artifacts"], self.generate()["artifacts"])
 
+    def test_workbuddy_zip_has_root_skill_and_matches_core(self):
+        self.generate()
+        archive_path = self.output / "workbuddy/solo-workbuddy.zip"
+        with zipfile.ZipFile(archive_path) as archive:
+            common = source_files(self.root / "core")
+            self.assertEqual(set(archive.namelist()), set(common))
+            self.assertIn("SKILL.md", archive.namelist())
+            self.assertFalse(any(name.startswith("solo/") for name in archive.namelist()))
+            for name, path in common.items():
+                self.assertEqual(archive.read(name), path.read_bytes())
+        skill = (self.root / "core/SKILL.md").read_text(encoding="utf-8")
+        for required in ("description:", "description_zh:", "description_en:", "version:", "author:"):
+            self.assertIn(required, skill)
+
     def test_single_source_update_and_stale_file_removal(self):
         example = self.root / "core/references/temporary.md"
         example.write_text("old", encoding="utf-8")
@@ -69,7 +83,7 @@ class InstallationTest(unittest.TestCase):
         skill_source = self.root / "core/SKILL.md"
         skill_source.write_text(skill_source.read_text(encoding="utf-8") + "\n更新示例\n", encoding="utf-8")
         self.generate()
-        for platform in PLATFORMS:
+        for platform in LOCAL_INSTALL_PLATFORMS:
             self.assertFalse((self.host(platform) / "references/temporary.md").exists())
             self.assertEqual(skill_source.read_bytes(), (self.host(platform) / "SKILL.md").read_bytes())
 
@@ -97,7 +111,7 @@ class InstallationTest(unittest.TestCase):
 
     def test_old_links_migrate_and_codex_duplicate_removed(self):
         self.generate()
-        for platform in PLATFORMS:
+        for platform in LOCAL_INSTALL_PLATFORMS:
             target = target_for(platform, self.home, "auto")
             target.parent.mkdir(parents=True, exist_ok=True)
             old = self.root / ("solo" if platform == "codex" else "adapters/" + platform + "/solo")
@@ -105,7 +119,7 @@ class InstallationTest(unittest.TestCase):
         duplicate = self.home / ".codex/skills/solo"
         duplicate.parent.mkdir(parents=True)
         duplicate.symlink_to(self.root / "solo", target_is_directory=True)
-        for platform in PLATFORMS:
+        for platform in LOCAL_INSTALL_PLATFORMS:
             self.assertTrue(install(platform, self.home, self.root))
             target = target_for(platform, self.home, "auto")
             self.assertEqual(target.is_symlink(), platform == "codex")
@@ -125,7 +139,7 @@ class InstallationTest(unittest.TestCase):
 
     def test_foreign_install_targets_preserved(self):
         self.generate()
-        for platform in PLATFORMS:
+        for platform in LOCAL_INSTALL_PLATFORMS:
             target = target_for(platform, self.home, "auto")
             target.mkdir(parents=True)
             (target / "user.md").write_text("keep")
@@ -137,6 +151,12 @@ class InstallationTest(unittest.TestCase):
         target.symlink_to(self.base / "foreign-skill")
         self.assertFalse(install("codex", other_home, self.root))
         self.assertEqual(target.readlink(), self.base / "foreign-skill")
+
+    def test_workbuddy_export_needs_no_local_skill_directory(self):
+        self.generate()
+        self.assertTrue(install("workbuddy", self.home, self.root))
+        self.assertFalse(self.home.exists())
+        self.assertTrue((self.output / "workbuddy/solo-workbuddy.zip").is_file())
 
     def test_copy_update_and_local_edit_protection(self):
         self.generate()
