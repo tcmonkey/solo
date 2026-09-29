@@ -1,9 +1,10 @@
 # Claude Code 宿主使用说明
 
-具备 Claude Code 后安装：
+以下相对路径均以 Solo 仓库根目录为准。先进入你克隆或解压后的 Solo 目录，再安装：
 
 ```bash
-python3 /Users/monkey/Documents/kit/workspace/solo/installers/install.py --platform claude-code
+cd <solo-repository-root>
+python3 installers/install.py --platform claude-code
 ```
 
 在目标仓库启动 Claude Code 并调用：
@@ -16,6 +17,6 @@ python3 /Users/monkey/Documents/kit/workspace/solo/installers/install.py --platf
 
 共享技能遵循 Claude Code 当前项目指令，将机器状态持久保存于 `.ai-delivery/`，将中文名 Markdown 文档写入 `AI/output/`。
 
-公共内容只在 core 维护。安装命令自动构建 dist/claude-code/solo，再安装完整真实文件副本到 ~/.claude/skills/solo；不依赖内部资源软链接。修改共享源后再次执行同一命令更新，已手工改动的安装文件会报告冲突并保留。
+公共内容只在 `core/` 维护。安装命令自动构建 `dist/claude-code/solo`，再安装完整真实文件副本到当前用户主目录下的 `~/.claude/skills/solo`；不依赖内部资源软链接。修改共享源后再次执行同一命令更新，已手工改动的安装文件会报告冲突并保留。
 
 安装结构可通过回归测试；本次未检测到 Claude Code 命令行程序，选择器及端到端执行尚未验证。

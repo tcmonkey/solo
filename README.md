@@ -51,16 +51,17 @@ solo/
 
 普通 Skill 的 SKILL.md、references、assets、scripts 在每份产物中完整具备，内部全部是真实文件。`core/`是唯一可编辑源；`dist/`和各宿主个人目录是构建/安装产物，禁止直接修订。技能演进只修改core与按需的adapters，然后执行安装命令重建并同步。额外目录服务于“跨宿主安装、单源维护、完整分发”，不要求 AI 每次读取整个工具包。references 是 AI 阅读的约束，assets 是生成到业务项目的模板，scripts 是初始化/迁移/校验/交接工具；业务代码与 AI/input、AI/output 不存放在此工具包里。
 
-外层 solo 可以改名，技能名仍然是 solo，但 Codex 安装链接及生成归属标记记录了源路径。改名或移动前需规划迁移：新路径安装器不会把旧路径入口自动认作自己管理的入口。其他宿主的真实副本仍可读取，但更新时也需协调旧归属。脚本按自身位置寻找资源，完整产物或 ZIP 可独立使用，不依赖 core 所在位置；说明中的绝对路径示例和快捷命令也需同步修改。
+外层 solo 可以改名，技能名仍然是 solo，但 Codex 安装链接及生成归属标记记录了源路径。改名或移动前需规划迁移：新路径安装器不会把旧路径入口自动认作自己管理的入口。其他宿主的真实副本仍可读取，但更新时也需协调旧归属。脚本按自身位置寻找资源，完整产物或 ZIP 可独立使用，不依赖 core 所在位置；文档中的相对路径均以 Solo 仓库根目录为准。
 
 旧名称 solo-delivery、旧 solo/solo 与 adapters 下的入口链接，可由安装器按已知目标安全迁移；只移除本工具管理的旧链接，不删除其指向的公共内容。其他来源的同名技能不会被覆盖或删除。
 
 ## 本地编码宿主安装
 
-安装 Codex、Claude Code 和 Qwen Code 的个人 Skill 入口：
+安装 Codex、Claude Code 和 Qwen Code 的个人 Skill 入口。先进入你克隆或解压后的 Solo 仓库根目录：
 
 ```bash
-python3 /Users/monkey/Documents/kit/workspace/solo/installers/install.py --platform all
+cd <solo-repository-root>
+python3 installers/install.py --platform all
 ```
 
 也可以通过 `--platform codex`、`--platform claude-code` 或 `--platform qwen-code` 单独安装。
@@ -122,16 +123,16 @@ $solo
 
 ## 通用 Skill 发行包
 
-构建供分享及后续宿主适配使用的 ZIP：
+构建供分享及后续宿主适配使用的 ZIP。以下命令从 Solo 仓库根目录执行：
 
 ```bash
-python3 /Users/monkey/Documents/kit/workspace/solo/installers/build_distributions.py
+python3 installers/build_distributions.py
 ```
 
 发行包：
 
 ```text
-/Users/monkey/Documents/kit/workspace/solo/dist/portable/solo.zip
+dist/portable/solo.zip
 ```
 
 压缩包包含单一顶层 `solo/`，内部有 `SKILL.md`、规范、模板和脚本。它保留通用分发能力，但不意味着任意宿主都已验证兼容；接入新宿主前须确认安装协议、调用方式、工具能力和实际运行效果。当前不维护普通聊天模式 Playbook。
@@ -141,7 +142,7 @@ python3 /Users/monkey/Documents/kit/workspace/solo/installers/build_distribution
 ## 安装结构验证
 
 ```bash
-python3 /Users/monkey/Documents/kit/workspace/solo/installers/test_installation.py
+python3 installers/test_installation.py
 ```
 
 回归覆盖真实文件、清单/ZIP 校验、独立资源路径、安装/更新、旧链接迁移、冲突保护及 dry-run。结构测试不等于宿主行为测试：Codex 还需调用实际技能发现接口；Claude Code 和 Qwen Code 的选择器及端到端行为需在对应宿主中验证，未验证前不宣称已兼容。
@@ -217,21 +218,21 @@ guided 在关键关口确认，continuous 在已授权范围持续。编写发�
 ## 手工命令
 
 ```bash
-python3 /Users/monkey/Documents/kit/workspace/solo/core/scripts/init_project.py \
+python3 core/scripts/init_project.py \
   --project /绝对路径/业务项目 --mode standard --interaction guided \
   --platform codex --model unknown \
   --capability filesystem=read-write --capability shell=available \
   --capability python=python3 --capability repository=local \
   --capability persistence=durable
 
-python3 /Users/monkey/Documents/kit/workspace/solo/core/scripts/validate_delivery.py \
+python3 core/scripts/validate_delivery.py \
   --project /绝对路径/业务项目
 ```
 
 已有 `0.1.x`～`0.7.x` 项目第一次使用 `0.8.0` 时执行：
 
 ```bash
-python3 /Users/monkey/Documents/kit/workspace/solo/core/scripts/migrate_project.py \
+python3 core/scripts/migrate_project.py \
   --project /绝对路径/业务项目
 ```
 

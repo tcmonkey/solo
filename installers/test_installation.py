@@ -158,6 +158,16 @@ class InstallationTest(unittest.TestCase):
         self.assertFalse(self.home.exists())
         self.assertTrue((self.output / "workbuddy/solo-workbuddy.zip").is_file())
 
+    def test_host_usage_docs_are_checkout_portable(self):
+        """使用说明不能绑定维护者机器上的仓库位置。"""
+        documents = [ROOT / "START.md", ROOT / "README.md", *sorted((ROOT / "adapters").glob("*/USAGE.md"))]
+        for document in documents:
+            content = document.read_text(encoding="utf-8")
+            self.assertNotIn("/Users/monkey", content, document)
+            self.assertNotIn("workspace/solo", content, document)
+        for document in sorted((ROOT / "adapters").glob("*/USAGE.md")):
+            self.assertIn("<solo-repository-root>", document.read_text(encoding="utf-8"), document)
+
     def test_copy_update_and_local_edit_protection(self):
         self.generate()
         self.assertTrue(install("claude-code", self.home, self.root))
