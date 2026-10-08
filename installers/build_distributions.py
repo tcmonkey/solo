@@ -13,7 +13,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
-PLATFORMS = ("codex", "claude-code", "qwen-code", "workbuddy")
+PLATFORMS = ("codex", "claude-code", "qwen-code", "zcode", "workbuddy")
 MARKER = ".solo-generated.json"
 GENERATOR = "solo/installers"
 EXCLUDED = {"__pycache__", ".git", ".idea", "target", ".DS_Store", ".flattened-pom.xml"}

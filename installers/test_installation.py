@@ -158,6 +158,16 @@ class InstallationTest(unittest.TestCase):
         self.assertFalse(self.home.exists())
         self.assertTrue((self.output / "workbuddy/solo-workbuddy.zip").is_file())
 
+    def test_zcode_installs_user_level_skill_and_updates_owned_copy(self):
+        self.generate()
+        target = self.home / ".zcode/skills/solo"
+        self.assertEqual(target_for("zcode", self.home, "auto"), target)
+        self.assertTrue(install("zcode", self.home, self.root))
+        self.assertFalse(target.is_symlink())
+        self.assertEqual((target / "SKILL.md").read_bytes(), (self.root / "core/SKILL.md").read_bytes())
+        self.assertTrue((target / MARKER).is_file())
+        self.assertTrue(install("zcode", self.home, self.root))
+
     def test_host_usage_docs_are_checkout_portable(self):
         """使用说明不能绑定维护者机器上的仓库位置。"""
         documents = [ROOT / "START.md", ROOT / "README.md", *sorted((ROOT / "adapters").glob("*/USAGE.md"))]

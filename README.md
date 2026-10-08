@@ -8,7 +8,7 @@
 
 ## 先区分宿主和模型
 
-- **宿主平台**负责安装、发现和调用 Skill，并提供文件、终端、浏览器与代码仓库能力。当前维护 Codex、Claude Code、Qwen Code 三个宿主的适配入口；其他宿主后续按实际需求验证和适配。
+- **宿主平台**负责安装、发现和调用 Skill，并提供文件、终端、浏览器与代码仓库能力。当前维护 Codex、Claude Code、Qwen Code、ZCode 的本地适配入口，以及 WorkBuddy 的导入包；其他宿主后续按实际需求验证和适配。
 - **模型提供方**负责理解和推理，例如 OpenAI、Claude、Qwen、DeepSeek、GLM 或 Doubao。模型名称不决定 Skill 的安装方式。
 
 同一个模型放在不同宿主中，按宿主的调用方式使用。运行时会把宿主记录为 `platform`，把实际模型记录为 `model`。
@@ -25,12 +25,16 @@ solo/
 ├── adapters/
 │   ├── codex/                    # USAGE.md + agents/openai.yaml
 │   ├── claude-code/              # USAGE.md
-│   └── qwen-code/                # USAGE.md
+│   ├── qwen-code/                # USAGE.md
+│   ├── zcode/                    # USAGE.md
+│   └── workbuddy/                # USAGE.md
 ├── installers/                   # 构建、安装、更新与回归测试
 ├── dist/                         # 自动生成，不手工编辑
 │   ├── codex/solo/               # 完整真实文件 + Codex 元数据
 │   ├── claude-code/solo/         # 完整真实文件
 │   ├── qwen-code/solo/           # 完整真实文件
+│   ├── zcode/solo/               # 完整真实文件
+│   ├── workbuddy/solo-workbuddy.zip  # WorkBuddy 导入包
 │   └── portable/solo.zip         # 通用单目录发行包
 ├── START.md                      # 跨宿主使用参考
 └── README.md
@@ -57,20 +61,21 @@ solo/
 
 ## 本地编码宿主安装
 
-安装 Codex、Claude Code 和 Qwen Code 的个人 Skill 入口。先进入你克隆或解压后的 Solo 仓库根目录：
+安装 Codex、Claude Code、Qwen Code 和 ZCode 的个人 Skill 入口。先进入你克隆或解压后的 Solo 仓库根目录：
 
 ```bash
 cd <solo-repository-root>
 python3 installers/install.py --platform all
 ```
 
-也可以通过 `--platform codex`、`--platform claude-code` 或 `--platform qwen-code` 单独安装。
+也可以通过 `--platform codex`、`--platform claude-code`、`--platform qwen-code` 或 `--platform zcode` 单独安装；`--platform workbuddy` 生成 WorkBuddy 导入包。
 
 | 宿主 | 默认个人位置 | 调用方式 |
 |---|---|---|
 | Codex | `~/.agents/skills/solo` → `dist/codex/solo`，一层目录链接 | `$solo` 或 `/skills` |
 | Claude Code | `~/.claude/skills/solo`，完整真实文件副本 | `/solo` |
 | Qwen Code | `~/.qwen/skills/solo`，完整真实文件副本 | `/solo` 或 `/skills` |
+| ZCode | `~/.zcode/skills/solo`，完整真实文件副本 | `$solo` 或 `/` 菜单「技能」分组 |
 
 安装命令也是更新命令：自动构建后同步所选宿主。修改 core 或平台配置后必须重新执行安装，不再通过内部软链接即时生效。仅构建会更新 Codex 所链接的目录，但不会同步其他宿主的已安装副本，因此日常推荐安装命令。
 
@@ -86,6 +91,7 @@ Codex 自动模式统一选择官方用户级 .agents 路径，并移除本工�
 Codex：$solo
 Claude Code：/solo
 Qwen Code：/solo
+ZCode：$solo
 ```
 
 裸调用的默认行为：
@@ -137,7 +143,7 @@ dist/portable/solo.zip
 
 压缩包包含单一顶层 `solo/`，内部有 `SKILL.md`、规范、模板和脚本。它保留通用分发能力，但不意味着任意宿主都已验证兼容；接入新宿主前须确认安装协议、调用方式、工具能力和实际运行效果。当前不维护普通聊天模式 Playbook。
 
-该命令同时生成三个宿主的完整目录。新宿主只需增加实际差异配置及安装规则，不需要复制公共规范。
+该命令同时生成五个宿主的完整目录。新宿主只需增加实际差异配置及安装规则，不需要复制公共规范。
 
 ## 安装结构验证
 
@@ -145,7 +151,7 @@ dist/portable/solo.zip
 python3 installers/test_installation.py
 ```
 
-回归覆盖真实文件、清单/ZIP 校验、独立资源路径、安装/更新、旧链接迁移、冲突保护及 dry-run。结构测试不等于宿主行为测试：Codex 还需调用实际技能发现接口；Claude Code 和 Qwen Code 的选择器及端到端行为需在对应宿主中验证，未验证前不宣称已兼容。
+回归覆盖真实文件、清单/ZIP 校验、独立资源路径、安装/更新、旧链接迁移、冲突保护及 dry-run。结构测试不等于宿主行为测试：Codex 还需调用实际技能发现接口；Claude Code、Qwen Code 和 ZCode 的选择器及端到端行为需在对应宿主中验证，未验证前不宣称已兼容。
 
 Codex 发现检查：`python3 installers/verify_codex_discovery.py`。它只启动一个短生命周期的诊断 app-server，查询 skills/list，不启动模型任务、不修改配置、不结束桌面应用。2026-09-17 已用本机捆绑版本 codex-cli 0.154.0-alpha.6.2 验证：solo 唯一、启用、展示元数据完整、发现错误为空；这不代替输入框补全的界面验证。其他两个宿主当前仅验证构建与安装结构，本次未检测到其命令行程序。
 
@@ -194,6 +200,7 @@ Skill 在使用某项能力前检测并记录：
 Codex：$solo 完成需求文档并记录交接
 Claude Code：/solo 继续，完善技术方案
 Qwen Code：/solo 根据已批准方案开始编码
+ZCode：$solo 根据当前修订号继续开发自测
 Codex：$solo 完成开发自测、代码审查和独立测试
 ```
 
@@ -201,7 +208,7 @@ Codex：$solo 完成开发自测、代码审查和独立测试
 
 ## 模型提供方
 
-DeepSeek、GLM、Qwen、Doubao 等模型运行在 Claude Code 中时使用 Claude Code 适配器；运行在 Qwen Code 中时使用 Qwen Code 适配器。只有当模型厂商提供了新的宿主和不同安装协议时，才新增宿主适配器。
+DeepSeek、GLM、Qwen、Doubao 等模型运行在 Claude Code、Qwen Code 或 ZCode 中时，分别使用对应宿主的适配器。只有当模型厂商提供了新的宿主和不同安装协议时，才新增宿主适配器。
 
 ## 流程规模与按需文档
 

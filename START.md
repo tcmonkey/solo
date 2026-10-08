@@ -5,11 +5,12 @@
 - Codex：调用 `$solo`
 - Claude Code：调用 `/solo`
 - Qwen Code：调用 `/solo`
+- ZCode：调用 `$solo`，或从 `/` 菜单的「技能」分组选择
 - WorkBuddy：在「专家 · Skills · Connectors → Skills」导入 `dist/workbuddy/solo-workbuddy.zip`，随后在对话中调用已安装的 Solo
 
-当前维护以上三个编码宿主及 WorkBuddy 导入包。其他宿主后续按需求适配；通用 `dist/portable/solo.zip` 仅作为分发资源，不代表已验证兼容。普通聊天模式降级入口已移除。
+当前维护以上四个编码宿主及 WorkBuddy 导入包。其他宿主后续按需求适配；通用 `dist/portable/solo.zip` 仅作为分发资源，不代表已验证兼容。普通聊天模式降级入口已移除。
 
-本文中的相对路径均以 Solo 仓库根目录为准；先进入你克隆或解压后的 Solo 目录。首次安装及后续更新使用同一命令：`python3 installers/install.py --platform all`。`core/`是唯一可编辑的公共技能源；`dist/`与`~/.agents/skills/solo`、`~/.claude/skills/solo`、`~/.qwen/skills/solo`都是生成或安装产物，不能直接编辑。每次技能演进只修改 core 和按需的 adapters，再运行该命令重建并同步全部宿主。Codex 使用一层目录链接，Claude Code 与 Qwen Code 默认真实副本；WorkBuddy 使用 `dist/workbuddy/solo-workbuddy.zip` 导入，不维护本地目录链接。
+本文中的相对路径均以 Solo 仓库根目录为准；先进入你克隆或解压后的 Solo 目录。首次安装及后续更新使用同一命令：`python3 installers/install.py --platform all`。`core/`是唯一可编辑的公共技能源；`dist/`与`~/.agents/skills/solo`、`~/.claude/skills/solo`、`~/.qwen/skills/solo`、`~/.zcode/skills/solo`都是生成或安装产物，不能直接编辑。每次技能演进只修改 core 和按需的 adapters，再运行该命令重建并同步全部宿主。Codex 使用一层目录链接，Claude Code、Qwen Code 与 ZCode 默认真实副本；WorkBuddy 使用 `dist/workbuddy/solo-workbuddy.zip` 导入，不维护本地目录链接。
 
 裸调用先介绍完整步骤和简易/平衡/完整模式；只问未知的项目目录和需求/附件，不强制选择终点。已有项目展示真实进度和下一步。目标明确后默认guided，从需求范围确认开始，不直接编码。
 

@@ -11,9 +11,13 @@ from pathlib import Path
 from build_distributions import MARKER, PLATFORMS, ROOT, build, materialize, source_files, validate_managed
 
 
-TARGETS = {"claude-code": Path(".claude/skills/solo"), "qwen-code": Path(".qwen/skills/solo")}
+TARGETS = {
+    "claude-code": Path(".claude/skills/solo"),
+    "qwen-code": Path(".qwen/skills/solo"),
+    "zcode": Path(".zcode/skills/solo"),
+}
 CODEX_TARGETS = {"agents": Path(".agents/skills/solo"), "codex": Path(".codex/skills/solo")}
-LOCAL_INSTALL_PLATFORMS = ("codex", "claude-code", "qwen-code")
+LOCAL_INSTALL_PLATFORMS = ("codex", "claude-code", "qwen-code", "zcode")
 
 
 def owned_link(target: Path, root: Path, platform: str) -> bool:
